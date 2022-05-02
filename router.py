@@ -43,7 +43,6 @@ async def update_user(request: UserSchema, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str("Bad Request"))
     
 
-
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(request: UserSchema, db: Session = Depends(get_db)):
     try:
