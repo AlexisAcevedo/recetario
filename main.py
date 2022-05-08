@@ -3,6 +3,8 @@ import models
 from router import router
 from config import engine
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_login import LoginManager
+
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -22,10 +24,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 app.include_router(router, prefix="/users", tags=["users"])
-
-
-
-#manejar los distintos codigos de error
-
