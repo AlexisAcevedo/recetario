@@ -18,9 +18,13 @@ class UserSchema(BaseModel):
         orm_mode = True
 
 
-#cambiar por "error" 
-class Response(GenericModel, Generic[T]):
-    #code: str
-    #status: str
-    message: str
-    
+class Login(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None

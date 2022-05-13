@@ -1,19 +1,15 @@
 from fastapi import FastAPI
 import models
-from router import router
+from router import router 
 from config import engine
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi_login import LoginManager
-
+from login_router import router as login_router
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 origins = [
-    "http://localhost.com",
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:8000"
+        "*"
 ]
 
 app.add_middleware(
@@ -25,3 +21,4 @@ app.add_middleware(
 )
 
 app.include_router(router, prefix="/users", tags=["users"])
+app.include_router(login_router, prefix="/auth", tags=["auth"])
