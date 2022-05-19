@@ -19,7 +19,7 @@ def get_db():
         db.close()
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-async def create_user(request: UserSchema, db: Session = Depends(get_db)):
+async def create_user(request: UserSchema, db: Session = Depends(get_db),  current_user: UserSchema = Depends(get_current_user)):
     try: 
         user = userService.create_user(db=db, user=request)
         return user
@@ -46,7 +46,7 @@ async def update_user(request: UserSchema, db: Session = Depends(get_db), curren
     
 
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(request: UserSchema, db: Session = Depends(get_db)):
+async def delete_user(request: UserSchema, db: Session = Depends(get_db),  current_user: UserSchema = Depends(get_current_user)):
     try:
         user = userService.delete_user(db=db, user_id=request.id)
         return  f"User {request.id} deleted"
