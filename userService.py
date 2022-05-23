@@ -3,13 +3,15 @@ from sqlalchemy.orm import Session
 from models import User
 from schemas import UserSchema
 
-
+#GET USERS
 def get_user(db: Session, skip: int = 0, limit: int = 100):
     return db.query(User).offset(skip).limit(limit).all()
 
+#GET USER BY ID
 def get_user_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
+#CREATE USER
 def create_user(db: Session, user: UserSchema):
     _user = User(email=user.email, password = user.password, name = user.name, lastname = user.lastname)
     db.add(_user)
@@ -17,11 +19,13 @@ def create_user(db: Session, user: UserSchema):
     db.refresh(_user)
     return _user
 
+#DELETE USER
 def delete_user(db: Session, user_id: int):
     _user = get_user_by_id(db=db, user_id=user_id)
     db.delete(_user)
     db.commit()
 
+#UPDATE USER
 def update_user(db: Session, user_id: int, email: str, password: str, name: str, lastname: str):
     _user = get_user_by_id(db=db, user_id=user_id)
     _user.email = email

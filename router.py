@@ -42,7 +42,7 @@ async def update_user(request: UserSchema, db: Session = Depends(get_db), curren
         user = userService.update_user(db=db, user_id=current_user.id, email=request.email, password=request.password, name=request.name, lastname=request.lastname)
         return user
     except Exception as e:  
-        raise HTTPException(status_code=400, detail=str("Bad Request"))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str("Bad Request"))
     
 #DELETE USER
 @router.delete("", status_code=status.HTTP_204_NO_CONTENT)
@@ -51,6 +51,6 @@ async def delete_user(request: UserSchema, db: Session = Depends(get_db),  curre
         user = userService.delete_user(db=db, user_id=request.id)
         return  f"User {request.id} deleted"
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str("Bad Request"))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str("Usuario inexistente"))
 
 

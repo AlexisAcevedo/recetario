@@ -20,6 +20,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+#ROUTES
 app.include_router(router, prefix="/users", tags=["users"])
 app.include_router(login_router, prefix="/auth", tags=["auth"])
