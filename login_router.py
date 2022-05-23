@@ -19,11 +19,12 @@ def get_db():
         yield db
     finally:
         db.close()
-
+        
+#AUTHENTICATION
 @router.post('/token')
 async def login (request: UserSchema, db: Session = Depends(get_db)):
-    #user = db.query(User).filter(User.email == request.email & User.password==request.password).first()
-    user = db.query(User).filter(User.email == request.email).first()
+    user = db.query(User).filter(User.email == request.email, User.password==request.password).first()
+    #user = db.query(User).filter(User.email == request.email).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")
     access_token = create_access_token(data={"sub": user.email, "id": user.id, "name": user.name, "lastname": user.lastname})
