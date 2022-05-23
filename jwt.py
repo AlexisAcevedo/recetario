@@ -27,7 +27,7 @@ def verify_token(token: str,credentials_exception):
     except JWTError:
         raise credentials_exception
 
-#oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token/form")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token/")
 
 #GET_CURRENT_USER
 def get_current_user(data: str = Depends(oauth2_scheme)):
