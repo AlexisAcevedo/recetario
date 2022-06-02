@@ -21,12 +21,9 @@ def get_db():
 #CREATE USER
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_user(request: UserSchema, db: Session = Depends(get_db)):
-    try:
         validate_email(email=request.email)
         return userService.create_user(db=db, user=request)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str("Bad Request"))
-    
+            
 #GET USERS
 @router.get("")
 async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user))  -> List[UserSchema]: 
