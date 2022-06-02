@@ -8,6 +8,7 @@ from schemas import UserSchema
 import userService
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt import get_current_user
+from utils import validate_email
 
 router = APIRouter()
 
@@ -20,9 +21,9 @@ def get_db():
 #CREATE USER
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_user(request: UserSchema, db: Session = Depends(get_db)):
-    try: 
-        user = userService.create_user(db=db, user=request)
-        return user
+    try:
+        validate_email(email=request.email)
+        return userService.create_user(db=db, user=request)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str("Bad Request"))
     
@@ -52,5 +53,3 @@ async def delete_user(request: UserSchema, db: Session = Depends(get_db),  curre
         return  f"User {request.id} deleted"
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str("Usuario inexistente"))
-
-
