@@ -23,7 +23,12 @@ def get_db():
 async def create_user(request: UserSchema, db: Session = Depends(get_db)):
         validate_email(email=request.email)
         return userService.create_user(db=db, user=request)
-            
+#GET USER             
+@router.get("/me")
+async def get_user(db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user))  -> UserSchema:
+    return current_user
+
+
 #GET USERS
 @router.get("")
 async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user))  -> List[UserSchema]: 
@@ -34,6 +39,7 @@ async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_d
         raise HTTPException(status_code=400, detail=str("Bad Request"))
 
 #PATCH USER
+#FALTA CORREGIR STATUS CODE
 @router.patch("")
 async def update_user(request: UserSchema, db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user)):  
     try:
