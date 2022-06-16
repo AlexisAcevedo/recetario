@@ -30,3 +30,4 @@ class TokenData(BaseModel):
     email: Optional[str] = None
     id: Optional[int] = None
     name : Optional[str] = None
+    lastname : Optional[str] = None

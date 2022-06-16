@@ -29,10 +29,10 @@ async def login (request: UserSchema, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.email, "id": user.id, "name": user.name, "lastname": user.lastname})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@router.post('/token/form')
+"""@router.post('/token/form')
 async def login (request: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == request.username).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Credentials")
     access_token = create_access_token(data={"sub": user.email, "id": user.id, "name": user.name, "lastname": user.lastname})
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "token_type": "bearer"}"""

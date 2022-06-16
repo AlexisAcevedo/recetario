@@ -18,29 +18,15 @@ def get_db():
         yield db
     finally:
         db.close()
-#CREATE USER
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_user(request: UserSchema, db: Session = Depends(get_db)):
-        validate_email(email=request.email)
-        return userService.create_user(db=db, user=request)
+
 #GET USER             
-@router.get("/me")
+@router.get("", status_code=status.HTTP_200_OK)
 async def get_user(db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user))  -> UserSchema:
     return current_user
 
-
-#GET USERS
-@router.get("")
-async def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user))  -> List[UserSchema]: 
-    try:
-        _users = userService.get_user(db, skip, limit)
-        return list(_users) 
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str("Bad Request"))
-
 #PATCH USER
 #FALTA CORREGIR STATUS CODE
-@router.patch("")
+@router.patch("", status_code=status.HTTP_200_OK)
 async def update_user(request: UserSchema, db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user)):  
     try:
         user = userService.update_user(db=db, user_id=current_user.id, email=request.email, password=request.password, name=request.name, lastname=request.lastname)
