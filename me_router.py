@@ -25,7 +25,6 @@ async def get_user(db: Session = Depends(get_db), current_user: UserSchema = Dep
     return current_user
 
 #PATCH USER
-#FALTA CORREGIR STATUS CODE
 @router.patch("", status_code=status.HTTP_200_OK)
 async def update_user(request: UserSchema, db: Session = Depends(get_db), current_user: UserSchema = Depends(get_current_user)):  
     try:

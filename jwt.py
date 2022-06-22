@@ -19,7 +19,6 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 #VERIFY TOKEN
-#FIJARSE SI SE PUEDE REUTILIZAR PARA LO QUE PIDIO CHRIS
 def verify_token(token: str,credentials_exception):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
