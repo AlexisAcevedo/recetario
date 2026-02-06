@@ -11,7 +11,7 @@ class TestAuth:
         """Test successful login returns token."""
         response = client.post(
             "/api/v1/auth/token",
-            data={"username": "test@example.com", "password": "testpassword"}
+            data={"username": "test@example.com", "password": "TestPass123!@#"}
         )
         
         assert response.status_code == 200

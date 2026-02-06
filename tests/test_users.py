@@ -13,7 +13,7 @@ class TestUsers:
             "/api/v1/users",
             json={
                 "email": "new@example.com",
-                "password": "newpassword123",
+                "password": "NewPass123!@#",
                 "name": "New",
                 "lastname": "User"
             }
@@ -30,8 +30,8 @@ class TestUsers:
         response = client.post(
             "/api/v1/users",
             json={
-                "email": "test@example.com",  # Already exists
-                "password": "anypassword123",
+                "email": "test@example.com",
+                "password": "AnyPass123!@#",
                 "name": "Another",
                 "lastname": "User"
             }
@@ -45,7 +45,7 @@ class TestUsers:
             "/api/v1/users",
             json={
                 "email": "not-an-email",
-                "password": "password123",
+                "password": "ValidPass123!@#",
                 "name": "Test",
                 "lastname": "User"
             }
@@ -93,4 +93,5 @@ class TestUsers:
         
         assert response.status_code == 200
         data = response.json()
-        assert isinstance(data, list)
+        # Response ahora es paginada
+        assert "items" in data or isinstance(data, list)

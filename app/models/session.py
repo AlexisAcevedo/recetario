@@ -3,7 +3,7 @@ Modelo SQLAlchemy de Sesión.
 Almacena refresh tokens y sesiones activas de usuarios.
 """
 import secrets
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -33,6 +33,11 @@ class Session(Base):
     
     __tablename__ = "sessions"
     
+    # Índice compuesto para optimizar validación de sesiones
+    __table_args__ = (
+        Index('ix_session_validation', 'user_id', 'is_revoked', 'expires_at'),
+    )
+    
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     refresh_token = Column(String(100), unique=True, nullable=False, index=True)
@@ -51,7 +56,13 @@ class Session(Base):
         from datetime import datetime, timezone
         if self.is_revoked:
             return False
-        if self.expires_at < datetime.now(timezone.utc):
+        # Comparación compatible con naive y aware datetimes
+        now = datetime.now(timezone.utc)
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            # Si expires_at es naive, tratarlo como UTC
+            expires = expires.replace(tzinfo=timezone.utc)
+        if expires < now:
             return False
         return True
     

@@ -27,7 +27,7 @@ class TestRateLimit:
         for _ in range(5):
             response = client.post(
                 "/api/v1/auth/token",
-                data={"username": "test@example.com", "password": "testpassword"}
+            data={"username": "test@example.com", "password": "TestPass123!@#"}
             )
             if response.status_code == 429:
                 break

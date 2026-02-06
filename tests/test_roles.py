@@ -46,7 +46,7 @@ def admin_user(db: Session, admin_role: Role) -> User:
     """Crea usuario administrador."""
     user = User(
         email="admin@example.com",
-        password=get_password_hash("adminpassword"),
+        password=get_password_hash("AdminPass123!@#"),
         name="Admin",
         lastname="User",
         role_id=admin_role.id
@@ -62,7 +62,7 @@ def admin_headers(client: TestClient, admin_user: User) -> dict:
     """Headers de autenticación para admin."""
     response = client.post(
         "/api/v1/auth/token",
-        data={"username": "admin@example.com", "password": "adminpassword"}
+        data={"username": "admin@example.com", "password": "AdminPass123!@#"}
     )
     assert response.status_code == 200
     token = response.json()["access_token"]

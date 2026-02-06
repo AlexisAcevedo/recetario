@@ -171,7 +171,7 @@ def refresh_access_token(db, refresh_token: str) -> Optional[tuple[str, "Session
     # Generar nuevo access token
     access_token = create_access_token(data={"user_id": session.user_id})
     
-    return access_token, session
+    return access_token, session.user_id  # Retornamos user_id para logging
 
 
 def revoke_session(db, session_id: int, user_id: int) -> bool:

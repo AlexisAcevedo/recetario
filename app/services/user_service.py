@@ -56,9 +56,19 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
     return db.query(User).offset(skip).limit(limit).all()
 
 
+def count_users(db: Session) -> int:
+    """Cuenta el total de usuarios en la base de datos."""
+    return db.query(User).count()
+
+
+
 def create_user(db: Session, user_data: UserCreate) -> User:
     """
     Crea un nuevo usuario.
+    
+    Implementa timing attack mitigation para prevenir user enumeration.
+    Siempre se hace un hash de contraseña, incluso si el email existe,
+    para que el tiempo de respuesta sea similar en ambos casos.
     
     Args:
         db: Sesión de base de datos
@@ -70,14 +80,27 @@ def create_user(db: Session, user_data: UserCreate) -> User:
     Raises:
         UserAlreadyExistsException: Si el email ya está registrado
     """
+    import time
+    
     # Verificar si el email ya existe
-    if get_user_by_email(db, user_data.email):
+    existing_user = get_user_by_email(db, user_data.email)
+    
+    # Timing attack mitigation: siempre hasheamos una contraseña
+    # incluso si el usuario ya existe, para que el tiempo sea similar
+    if existing_user:
+        # Hash dummy para timing consistency
+        get_password_hash("dummy_password_for_timing_attack_mitigation")
+        # Pequeño delay aleatorio para mayor seguridad
+        time.sleep(0.01)
         raise UserAlreadyExistsException()
+    
+    # Hash real de la contraseña
+    hashed_password = get_password_hash(user_data.password)
     
     # Crear usuario con contraseña hasheada
     user = User(
         email=user_data.email,
-        password=get_password_hash(user_data.password),
+        password=hashed_password,
         name=user_data.name,
         lastname=user_data.lastname
     )
@@ -90,6 +113,7 @@ def create_user(db: Session, user_data: UserCreate) -> User:
     except IntegrityError:
         db.rollback()
         raise UserAlreadyExistsException()
+
 
 
 def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:

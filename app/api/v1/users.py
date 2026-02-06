@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
 from app.schemas.user import UserCreate, UserResponse
+from app.schemas.pagination import PaginatedResponse
 from app.services import user_service
 from app.models.user import User
 from app.core.limiter import limiter
@@ -16,27 +17,39 @@ from app.core.limiter import limiter
 router = APIRouter()
 
 
-@router.get("", response_model=List[UserResponse])
+@router.get("", response_model=PaginatedResponse[UserResponse])
 @limiter.limit("100/minute")
 async def get_users(
     request: Request,
-    skip: int = 0,
-    limit: int = 100,
+    page: int = 1,
+    per_page: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
-) -> List[UserResponse]:
+) -> PaginatedResponse[UserResponse]:
     """
-    Obtiene todos los usuarios (requiere autenticación).
+    Obtiene todos los usuarios con paginación (requiere autenticación).
     
     Args:
         request: Request con IP para rate limiting
-        skip: Número de usuarios a omitir (paginación)
-        limit: Máximo de usuarios a retornar
+        page: Número de página (1-based)
+        per_page: Usuarios por página
         
     Returns:
-        Lista de usuarios
+        Objeto paginado con lista de usuarios y metadatos
     """
-    return user_service.get_users(db, skip=skip, limit=limit)
+    skip = (page - 1) * per_page
+    users = user_service.get_users(db, skip=skip, limit=per_page)
+    total = user_service.count_users(db)
+    
+    total_pages = (total + per_page - 1) // per_page
+    
+    return PaginatedResponse(
+        items=users,
+        total=total,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages
+    )
 
 
 @router.get("/{user_id}", response_model=UserResponse)

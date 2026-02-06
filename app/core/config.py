@@ -5,6 +5,7 @@ Carga variables de entorno usando pydantic-settings.
 from functools import lru_cache
 from typing import Optional
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -34,6 +35,20 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 15  # Reducido para mayor seguridad
     refresh_token_expire_days: int = 7     # Refresh token dura más
+    
+    # CORS
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8080",
+        description="Orígenes CORS permitidos, separados por coma"
+    )
+    
+    # Observabilidad
+    sentry_dsn: str | None = Field(default=None, description="Sentry DSN para error tracking")
+    environment: str = Field(default="development", description="Entorno de ejecución")
+    
+    def get_cors_origins_list(self) -> list[str]:
+        """Convierte cors_origins string a lista."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
     
     class Config:
         env_file = ".env"

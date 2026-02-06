@@ -30,6 +30,13 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 @pytest.fixture(scope="function", autouse=True)
 def setup_database():
     """Crea y elimina tablas para cada test."""
+    # Reset rate limiter para evitar acumulación entre tests
+    from app.core.limiter import limiter
+    try:
+        limiter.reset()
+    except Exception:
+        pass  # Limiter puede no tener estado en tests
+    
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -70,7 +77,7 @@ def test_user(db) -> User:
     """Crea un usuario de prueba en la base de datos."""
     user = User(
         email="test@example.com",
-        password=get_password_hash("testpassword"),
+        password=get_password_hash("TestPass123!@#"),  # Contraseña fuerte
         name="Test",
         lastname="User"
     )
@@ -85,7 +92,7 @@ def auth_headers(client, test_user) -> Dict[str, str]:
     """Obtiene headers de autenticación para el usuario de prueba."""
     response = client.post(
         "/api/v1/auth/token",
-        data={"username": "test@example.com", "password": "testpassword"}
+        data={"username": "test@example.com", "password": "TestPass123!@#"}
     )
     assert response.status_code == 200, f"Login fallido: {response.json()}"
     token = response.json()["access_token"]

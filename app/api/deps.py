@@ -7,6 +7,7 @@ from typing import Generator
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
+from jose import JWTError
 
 from app.core.database import SessionLocal
 from app.core.security import decode_token
@@ -82,7 +83,7 @@ def get_current_user_optional(
     """
     try:
         return get_current_user(token, db)
-    except:
+    except (HTTPException, JWTError):
         return None
 
 

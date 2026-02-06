@@ -6,6 +6,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from fastapi_cache.decorator import cache
 
 from app.api.deps import get_db, require_role
 from app.models.role import Role, Permission
@@ -19,6 +20,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[RoleResponse])
+@cache(expire=3600)
 async def list_roles(
     db: Session = Depends(get_db),
     _: User = Depends(require_role(["admin"]))
@@ -32,6 +34,7 @@ async def list_roles(
 
 
 @router.get("/permissions", response_model=List[PermissionResponse])
+@cache(expire=86400) # Permisos cambian muy poco
 async def list_permissions(
     db: Session = Depends(get_db),
     _: User = Depends(require_role(["admin"]))
