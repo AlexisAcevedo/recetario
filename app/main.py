@@ -12,6 +12,18 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import router as api_v1_router
 
+from app.core.config import settings
+from app.core.database import engine, Base
+from app.api.v1.router import router as api_v1_router
+from app.core.limiter import limiter
+
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+
+# Configuración de Rate Limiting trasladada a app.core.limiter para evitar ciclos
+
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,6 +46,10 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+# Conectar limiter a la app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configuración de CORS
 origins = [

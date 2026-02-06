@@ -12,9 +12,11 @@ class Token(BaseModel):
     
     Atributos:
         access_token: Token JWT codificado
+        refresh_token: Token para renovar el access token
         token_type: Tipo de token (siempre "bearer")
     """
     access_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
 
 

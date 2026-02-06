@@ -84,3 +84,55 @@ def get_current_user_optional(
         return get_current_user(token, db)
     except:
         return None
+
+
+def require_role(allowed_roles: list[str]):
+    """
+    Dependencia que verifica si el usuario tiene uno de los roles permitidos.
+    
+    Args:
+        allowed_roles: Lista de nombres de roles permitidos
+        
+    Raises:
+        HTTPException 403: Si el usuario no tiene el rol requerido
+        
+    Uso:
+        @router.get("/admin", dependencies=[Depends(require_role(["admin"]))])
+    """
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Usuario sin rol asignado"
+            )
+        if current_user.role.name not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Rol '{current_user.role.name}' no tiene acceso a este recurso"
+            )
+        return current_user
+    return role_checker
+
+
+def require_permission(permission_name: str):
+    """
+    Dependencia que verifica si el usuario tiene un permiso específico.
+    
+    Args:
+        permission_name: Nombre del permiso requerido
+        
+    Raises:
+        HTTPException 403: Si el usuario no tiene el permiso
+        
+    Uso:
+        @router.delete("/recipe/{id}", dependencies=[Depends(require_permission("delete_recipe"))])
+    """
+    def permission_checker(current_user: User = Depends(get_current_user)):
+        if not current_user.has_permission(permission_name):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permiso '{permission_name}' requerido"
+            )
+        return current_user
+    return permission_checker
+

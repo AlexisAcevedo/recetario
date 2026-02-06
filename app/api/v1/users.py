@@ -4,19 +4,22 @@ Endpoints CRUD para gestión de usuarios.
 """
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
 from app.schemas.user import UserCreate, UserResponse
 from app.services import user_service
 from app.models.user import User
+from app.core.limiter import limiter
 
 router = APIRouter()
 
 
 @router.get("", response_model=List[UserResponse])
+@limiter.limit("100/minute")
 async def get_users(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -26,6 +29,7 @@ async def get_users(
     Obtiene todos los usuarios (requiere autenticación).
     
     Args:
+        request: Request con IP para rate limiting
         skip: Número de usuarios a omitir (paginación)
         limit: Máximo de usuarios a retornar
         
@@ -36,7 +40,9 @@ async def get_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
+@limiter.limit("100/minute")
 async def get_user(
+    request: Request,
     user_id: int,
     db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -44,6 +50,7 @@ async def get_user(
     Obtiene un usuario por su ID.
     
     Args:
+        request: Request con IP para rate limiting
         user_id: ID del usuario a buscar
         
     Returns:
@@ -60,7 +67,9 @@ async def get_user(
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/hour")
 async def create_user(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -68,6 +77,7 @@ async def create_user(
     Crea un nuevo usuario.
     
     Args:
+        request: Request con IP para rate limiting
         user_data: Datos del usuario a crear
         
     Returns:

@@ -44,10 +44,24 @@ class UserResponse(UserBase):
     Incluye timestamps de creación y actualización.
     """
     id: int
+    role: Optional[str] = None  # Nombre del rol asignado
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     
     model_config = ConfigDict(from_attributes=True)
+    
+    @classmethod
+    def from_user(cls, user):
+        """Crea respuesta desde modelo User incluyendo nombre del rol."""
+        return cls(
+            id=user.id,
+            email=user.email,
+            name=user.name,
+            lastname=user.lastname,
+            role=user.role.name if user.role else None,
+            created_at=user.created_at,
+            updated_at=user.updated_at
+        )
 
 
 class UserInDB(UserResponse):

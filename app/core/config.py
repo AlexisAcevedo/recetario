@@ -18,7 +18,8 @@ class Settings(BaseSettings):
         database_url: URL de conexión a PostgreSQL
         secret_key: Clave secreta para JWT
         algorithm: Algoritmo de encriptación JWT
-        access_token_expire_minutes: Minutos de validez del token
+        access_token_expire_minutes: Minutos de validez del access token
+        refresh_token_expire_days: Días de validez del refresh token
     """
     
     # Configuración general
@@ -31,7 +32,8 @@ class Settings(BaseSettings):
     # Seguridad JWT
     secret_key: str
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 15  # Reducido para mayor seguridad
+    refresh_token_expire_days: int = 7     # Refresh token dura más
     
     class Config:
         env_file = ".env"

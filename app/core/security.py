@@ -99,3 +99,125 @@ def decode_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+def create_session_with_tokens(
+    db,  # Session de SQLAlchemy
+    user_id: int,
+    device_info: Optional[str] = None,
+    ip_address: Optional[str] = None
+) -> tuple[str, str]:
+    """
+    Crea una sesión y genera par de tokens (access + refresh).
+    
+    Args:
+        db: Sesión de base de datos
+        user_id: ID del usuario
+        device_info: Información del dispositivo/navegador
+        ip_address: IP del cliente
+        
+    Returns:
+        Tupla (access_token, refresh_token)
+    """
+    from app.models.session import Session, generate_refresh_token
+    
+    # Generar refresh token
+    refresh_token = generate_refresh_token()
+    expires_at = datetime.now(timezone.utc) + timedelta(
+        days=settings.refresh_token_expire_days
+    )
+    
+    # Crear sesión en DB
+    session = Session(
+        user_id=user_id,
+        refresh_token=refresh_token,
+        device_info=device_info,
+        ip_address=ip_address,
+        expires_at=expires_at
+    )
+    db.add(session)
+    db.commit()
+    
+    # Generar access token
+    access_token = create_access_token(data={"user_id": user_id})
+    
+    return access_token, refresh_token
+
+
+def refresh_access_token(db, refresh_token: str) -> Optional[tuple[str, "Session"]]:
+    """
+    Renueva un access token usando un refresh token válido.
+    
+    Args:
+        db: Sesión de base de datos
+        refresh_token: Token de refresh
+        
+    Returns:
+        Tupla (nuevo_access_token, session) o None si inválido
+    """
+    from app.models.session import Session
+    
+    session = db.query(Session).filter(
+        Session.refresh_token == refresh_token
+    ).first()
+    
+    if not session or not session.is_valid():
+        return None
+    
+    # Actualizar última vez usado
+    session.last_used_at = datetime.now(timezone.utc)
+    db.commit()
+    
+    # Generar nuevo access token
+    access_token = create_access_token(data={"user_id": session.user_id})
+    
+    return access_token, session
+
+
+def revoke_session(db, session_id: int, user_id: int) -> bool:
+    """
+    Revoca una sesión específica de un usuario.
+    
+    Args:
+        db: Sesión de base de datos
+        session_id: ID de la sesión a revocar
+        user_id: ID del usuario (para verificar propiedad)
+        
+    Returns:
+        True si se revocó, False si no se encontró o no pertenece al usuario
+    """
+    from app.models.session import Session
+    
+    session = db.query(Session).filter(
+        Session.id == session_id,
+        Session.user_id == user_id
+    ).first()
+    
+    if not session:
+        return False
+    
+    session.is_revoked = True
+    db.commit()
+    return True
+
+
+def revoke_all_sessions(db, user_id: int) -> int:
+    """
+    Revoca todas las sesiones de un usuario.
+    
+    Args:
+        db: Sesión de base de datos
+        user_id: ID del usuario
+        
+    Returns:
+        Número de sesiones revocadas
+    """
+    from app.models.session import Session
+    
+    count = db.query(Session).filter(
+        Session.user_id == user_id,
+        Session.is_revoked == False
+    ).update({"is_revoked": True})
+    db.commit()
+    return count
+

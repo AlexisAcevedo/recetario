@@ -24,6 +24,9 @@ Recetario API es una aplicación backend desarrollada con **FastAPI** que propor
 ### Características principales:
 
 - ✅ Autenticación JWT con tokens de acceso
+- ✅ **RBAC (Roles de Usuario)**: Admin, User, Moderator
+- ✅ **Refresh Tokens**: Gestión de sesiones y revocación
+- ✅ **Rate Limiting**: Protección contra ataques de fuerza bruta
 - ✅ CRUD completo de usuarios
 - ✅ Validación de datos con Pydantic
 - ✅ Hasheo seguro de contraseñas con bcrypt
@@ -174,6 +177,27 @@ curl -X POST http://127.0.0.1:8000/api/v1/users \
 | GET | `/api/v1/me` | Mi perfil | ✅ |
 | PUT | `/api/v1/me` | Actualizar perfil | ✅ |
 | DELETE | `/api/v1/me` | Eliminar cuenta | ✅ |
+| GET | `/api/v1/me/sessions` | Listar sesiones activas | ✅ |
+| DELETE | `/api/v1/me/sessions` | Cerrar todas las sesiones | ✅ |
+
+### Roles y Permisos (Admin)
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/v1/roles` | Listar roles | ✅👮 |
+| POST | `/api/v1/roles` | Crear rol | ✅👮 |
+| POST | `/api/v1/roles/assign` | Asignar rol a usuario | ✅👮 |
+
+> **Nota**: 👮 Requiere rol de Administrador.
+
+### Seguridad Avanzada
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/v1/auth/refresh` | Renovar access token | ❌ |
+
+**Rate limits aplicados:**
+- Login: 5 peticiones/minuto
+- Registro: 10 peticiones/hora
+- General: 100 peticiones/minuto
 
 ---
 
@@ -224,9 +248,13 @@ recetario/
 │   │   ├── security.py         # JWT y bcrypt
 │   │   └── exceptions.py       # Excepciones HTTP
 │   ├── models/                 # Modelos SQLAlchemy
-│   │   └── user.py             # Modelo de usuario
+│   │   ├── user.py             # Modelo de usuario
+│   │   ├── role.py             # Modelo de roles (RBAC)
+│   │   └── session.py          # Modelo de sesiones
 │   ├── schemas/                # Esquemas Pydantic
 │   │   ├── user.py             # Schemas de usuario
+│   │   ├── role.py             # Schemas de roles
+│   │   ├── session.py          # Schemas de sesiones
 │   │   └── token.py            # Schemas de token
 │   ├── services/               # Lógica de negocio
 │   │   └── user_service.py     # Servicio de usuarios
@@ -235,7 +263,10 @@ recetario/
 │   ├── conftest.py             # Fixtures
 │   ├── test_auth.py            # Tests de auth
 │   ├── test_users.py           # Tests de usuarios
-│   └── test_me.py              # Tests de perfil
+│   ├── test_me.py              # Tests de perfil
+│   ├── test_roles.py           # Tests de RBAC
+│   ├── test_sessions.py        # Tests de sesiones
+│   └── test_rate_limit.py      # Tests de rate limit
 ├── docs/                       # Documentación
 ├── legacy/                     # Código original (referencia)
 ├── .env                        # Variables de entorno

@@ -129,38 +129,13 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 
 ---
 
-## 🔐 Flujo de Autenticación
-
-```
-           ┌─────────┐
-           │ Cliente │
-           └────┬────┘
-                │ POST /auth/token
-                │ {username, password}
-                ▼
-        ┌───────────────┐
-        │  auth router  │
-        └───────┬───────┘
-                │
-                ▼
-        ┌───────────────┐
-        │ user_service  │
-        │ authenticate  │───► Verifica password con bcrypt
-        └───────┬───────┘
-                │ Usuario válido
-                ▼
-        ┌───────────────┐
-        │   security    │
-        │ create_token  │───► Genera JWT con jose
-        └───────┬───────┘
-                │
-                ▼
-           ┌─────────┐
-           │ Cliente │
-           │ recibe  │
-           │ {token} │
-           └─────────┘
-```
+### 🔐 Seguridad y Autenticación
+1. **Login**: Usuario envía credenciales -> Recibe `access_token` (JWT corta duración) y `refresh_token`.
+2. **Uso de API**: Cliente envía `Authorization: Bearer <access_token>`.
+3. **Renovación**: Cuando `access_token` expira, cliente usa `refresh_token` en endpoint `/refresh` para obtener nuevo par.
+4. **Logout**: Cliente revoca sesión en `/me/sessions`.
+5. **RBAC**: Middleware verifica roles en endpoints protegidos (ej: `admin`, `moderator`).
+6. **Rate Limiting**: `SlowAPI` limita peticiones por IP para prevenir abusos.
 
 ---
 
