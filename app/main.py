@@ -1,7 +1,7 @@
 """
-Recetario API - Main Application Entry Point
+Recetario API - Punto de Entrada Principal
 
-A modern FastAPI application for user management with JWT authentication.
+Aplicación FastAPI moderna para gestión de usuarios con autenticación JWT.
 """
 from contextlib import asynccontextmanager
 
@@ -15,23 +15,27 @@ from app.api.v1.router import router as api_v1_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan - runs on startup and shutdown."""
-    # Startup: Create database tables
+    """
+    Ciclo de vida de la aplicación.
+    
+    Se ejecuta al inicio y al cierre del servidor.
+    """
+    # Inicio: Crear tablas en la base de datos
     Base.metadata.create_all(bind=engine)
     yield
-    # Shutdown: Cleanup if needed
+    # Cierre: Limpieza si es necesaria
     pass
 
 
-# Create FastAPI application
+# Crear aplicación FastAPI
 app = FastAPI(
     title=settings.app_name,
-    description="API de usuarios para el sistema de recetario",
+    description="API de gestión de usuarios para el sistema de recetario",
     version="2.0.0",
     lifespan=lifespan
 )
 
-# CORS configuration
+# Configuración de CORS
 origins = [
     "http://localhost:8000",
     "http://localhost:3000",
@@ -47,13 +51,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API routers
+# Incluir routers de la API
 app.include_router(api_v1_router, prefix="/api/v1")
 
 
 @app.get("/", tags=["health"])
 async def root():
-    """Health check endpoint."""
+    """Endpoint de verificación de estado."""
     return {
         "status": "ok",
         "app": settings.app_name,
@@ -63,7 +67,7 @@ async def root():
 
 @app.get("/health", tags=["health"])
 async def health_check():
-    """Detailed health check."""
+    """Verificación de estado detallada."""
     return {
         "status": "healthy",
         "database": "connected"

@@ -1,5 +1,6 @@
 """
-Users router - User CRUD endpoints.
+Router de Usuarios.
+Endpoints CRUD para gestión de usuarios.
 """
 from typing import List
 
@@ -22,10 +23,14 @@ async def get_users(
     current_user: User = Depends(get_current_user)
 ) -> List[UserResponse]:
     """
-    Get all users (requires authentication).
+    Obtiene todos los usuarios (requiere autenticación).
     
-    - **skip**: Number of users to skip (pagination)
-    - **limit**: Maximum number of users to return
+    Args:
+        skip: Número de usuarios a omitir (paginación)
+        limit: Máximo de usuarios a retornar
+        
+    Returns:
+        Lista de usuarios
     """
     return user_service.get_users(db, skip=skip, limit=limit)
 
@@ -36,7 +41,16 @@ async def get_user(
     db: Session = Depends(get_db)
 ) -> UserResponse:
     """
-    Get a specific user by ID.
+    Obtiene un usuario por su ID.
+    
+    Args:
+        user_id: ID del usuario a buscar
+        
+    Returns:
+        Datos del usuario
+        
+    Raises:
+        404: Si el usuario no existe
     """
     user = user_service.get_user_by_id(db, user_id)
     if not user:
@@ -51,11 +65,15 @@ async def create_user(
     db: Session = Depends(get_db)
 ) -> UserResponse:
     """
-    Create a new user.
+    Crea un nuevo usuario.
     
-    - **email**: Valid email address
-    - **password**: Minimum 8 characters
-    - **name**: User's first name
-    - **lastname**: User's last name
+    Args:
+        user_data: Datos del usuario a crear
+        
+    Returns:
+        Usuario creado
+        
+    Raises:
+        400: Si el email ya está registrado
     """
     return user_service.create_user(db, user_data)

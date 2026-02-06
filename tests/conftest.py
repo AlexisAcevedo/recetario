@@ -1,5 +1,6 @@
 """
-Test fixtures for the recetario API.
+Fixtures de prueba para la API de recetario.
+Configura base de datos en memoria y helpers de autenticación.
 """
 import pytest
 from typing import Generator, Dict
@@ -15,7 +16,7 @@ from app.api.deps import get_db
 from app.core.security import get_password_hash
 from app.models.user import User
 
-# Test database (in-memory SQLite)
+# Base de datos de prueba (SQLite en memoria)
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -28,14 +29,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_database():
-    """Create and drop tables for each test."""
+    """Crea y elimina tablas para cada test."""
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 
 def override_get_db():
-    """Override database dependency for tests."""
+    """Sobreescribe la dependencia de base de datos para tests."""
     db = TestingSessionLocal()
     try:
         yield db
@@ -45,7 +46,7 @@ def override_get_db():
 
 @pytest.fixture(scope="function")
 def db() -> Generator:
-    """Provide a database session for tests."""
+    """Proporciona una sesión de base de datos para tests."""
     db = TestingSessionLocal()
     try:
         yield db
@@ -55,7 +56,7 @@ def db() -> Generator:
 
 @pytest.fixture(scope="function")
 def client() -> Generator:
-    """Create a test client with overridden database."""
+    """Crea un cliente de prueba con base de datos sobreescrita."""
     app.dependency_overrides[get_db] = override_get_db
     
     with TestClient(app) as c:
@@ -66,7 +67,7 @@ def client() -> Generator:
 
 @pytest.fixture
 def test_user(db) -> User:
-    """Create a test user in the database."""
+    """Crea un usuario de prueba en la base de datos."""
     user = User(
         email="test@example.com",
         password=get_password_hash("testpassword"),
@@ -81,11 +82,11 @@ def test_user(db) -> User:
 
 @pytest.fixture
 def auth_headers(client, test_user) -> Dict[str, str]:
-    """Get authentication headers for the test user."""
+    """Obtiene headers de autenticación para el usuario de prueba."""
     response = client.post(
         "/api/v1/auth/token",
         data={"username": "test@example.com", "password": "testpassword"}
     )
-    assert response.status_code == 200, f"Login failed: {response.json()}"
+    assert response.status_code == 200, f"Login fallido: {response.json()}"
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

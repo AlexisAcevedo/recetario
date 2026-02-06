@@ -1,5 +1,6 @@
 """
-Me router - Current user profile endpoints.
+Router de Mi Perfil.
+Endpoints para gestión del perfil del usuario actual.
 """
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
@@ -17,7 +18,10 @@ async def get_me(
     current_user: User = Depends(get_current_user)
 ) -> UserResponse:
     """
-    Get current user profile.
+    Obtiene el perfil del usuario actual.
+    
+    Returns:
+        Datos del usuario autenticado
     """
     return current_user
 
@@ -29,9 +33,12 @@ async def update_me(
     current_user: User = Depends(get_current_user)
 ) -> UserResponse:
     """
-    Update current user profile.
+    Actualiza el perfil del usuario actual.
     
-    All fields are optional - only provided fields will be updated.
+    Todos los campos son opcionales - solo se actualizan los proporcionados.
+    
+    Returns:
+        Usuario actualizado
     """
     return user_service.update_user(db, current_user.id, user_data)
 
@@ -42,9 +49,9 @@ async def delete_me(
     current_user: User = Depends(get_current_user)
 ) -> None:
     """
-    Delete current user account.
+    Elimina la cuenta del usuario actual.
     
-    ⚠️ This action is irreversible!
+    ⚠️ Esta acción es irreversible.
     """
     user_service.delete_user(db, current_user.id)
     return None

@@ -1,5 +1,6 @@
 """
-User Pydantic schemas for request/response validation.
+Esquemas Pydantic de Usuario.
+Define los modelos para validación de requests y responses.
 """
 from datetime import datetime
 from typing import Optional
@@ -8,19 +9,27 @@ from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class UserBase(BaseModel):
-    """Base schema with common user fields."""
+    """Esquema base con campos comunes de usuario."""
     email: EmailStr
     name: str = Field(..., min_length=2, max_length=100)
     lastname: str = Field(..., min_length=2, max_length=100)
 
 
 class UserCreate(UserBase):
-    """Schema for creating a new user."""
+    """
+    Esquema para crear un nuevo usuario.
+    
+    Extiende UserBase agregando el campo password.
+    """
     password: str = Field(..., min_length=8, description="Mínimo 8 caracteres")
 
 
 class UserUpdate(BaseModel):
-    """Schema for updating user data. All fields optional."""
+    """
+    Esquema para actualizar datos de usuario.
+    
+    Todos los campos son opcionales - solo se actualizan los proporcionados.
+    """
     email: Optional[EmailStr] = None
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     lastname: Optional[str] = Field(None, min_length=2, max_length=100)
@@ -28,7 +37,12 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(UserBase):
-    """Schema for user responses (excludes password)."""
+    """
+    Esquema para respuestas de usuario.
+    
+    Excluye la contraseña por seguridad.
+    Incluye timestamps de creación y actualización.
+    """
     id: int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -37,5 +51,9 @@ class UserResponse(UserBase):
 
 
 class UserInDB(UserResponse):
-    """Schema for user with hashed password (internal use only)."""
+    """
+    Esquema de usuario con contraseña hasheada.
+    
+    Solo para uso interno - nunca retornar en responses.
+    """
     password: str

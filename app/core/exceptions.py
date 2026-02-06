@@ -1,11 +1,17 @@
 """
-Custom exceptions for the application.
+Excepciones personalizadas de la aplicación.
+Define excepciones HTTP específicas para manejo de errores consistente.
 """
 from fastapi import HTTPException, status
 
 
 class UserNotFoundException(HTTPException):
-    """Raised when a user is not found."""
+    """
+    Excepción lanzada cuando no se encuentra un usuario.
+    
+    Código HTTP: 404 Not Found
+    """
+    
     def __init__(self, detail: str = "Usuario no encontrado"):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -14,7 +20,13 @@ class UserNotFoundException(HTTPException):
 
 
 class UserAlreadyExistsException(HTTPException):
-    """Raised when trying to create a user that already exists."""
+    """
+    Excepción lanzada cuando se intenta crear un usuario
+    con un email que ya existe.
+    
+    Código HTTP: 400 Bad Request
+    """
+    
     def __init__(self, detail: str = "El email ya está registrado"):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -23,20 +35,32 @@ class UserAlreadyExistsException(HTTPException):
 
 
 class InvalidCredentialsException(HTTPException):
-    """Raised when login credentials are invalid."""
-    def __init__(self):
+    """
+    Excepción lanzada cuando las credenciales de login son inválidas.
+    
+    Código HTTP: 401 Unauthorized
+    Incluye header WWW-Authenticate para clientes OAuth2.
+    """
+    
+    def __init__(self, detail: str = "Email o contraseña incorrectos"):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email o contraseña incorrectos",
+            detail=detail,
             headers={"WWW-Authenticate": "Bearer"}
         )
 
 
 class NotAuthenticatedException(HTTPException):
-    """Raised when authentication is required but not provided."""
-    def __init__(self):
+    """
+    Excepción lanzada cuando se requiere autenticación
+    pero no se proporcionó un token válido.
+    
+    Código HTTP: 401 Unauthorized
+    """
+    
+    def __init__(self, detail: str = "No autenticado"):
         super().__init__(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No autenticado",
+            detail=detail,
             headers={"WWW-Authenticate": "Bearer"}
         )

@@ -1,5 +1,6 @@
 """
-API Dependencies - Reusable dependency functions.
+Dependencias de la API.
+Funciones reutilizables para inyección de dependencias en endpoints.
 """
 from typing import Generator
 
@@ -13,12 +14,20 @@ from app.core.exceptions import NotAuthenticatedException
 from app.models.user import User
 from app.schemas.token import TokenData
 
-# OAuth2 scheme for token authentication
+# Esquema OAuth2 para autenticación con token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
 def get_db() -> Generator:
-    """Provide database session."""
+    """
+    Proporciona una sesión de base de datos.
+    
+    Se usa como dependencia de FastAPI para inyectar
+    la sesión en los endpoints automáticamente.
+    
+    Yields:
+        Session: Sesión de SQLAlchemy
+    """
     db = SessionLocal()
     try:
         yield db
@@ -31,10 +40,17 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """
-    Get the current authenticated user from JWT token.
+    Obtiene el usuario actual autenticado desde el token JWT.
     
+    Args:
+        token: Token JWT del header Authorization
+        db: Sesión de base de datos
+        
+    Returns:
+        Usuario autenticado
+        
     Raises:
-        NotAuthenticatedException: If token is invalid or user not found
+        NotAuthenticatedException: Si el token es inválido o el usuario no existe
     """
     payload = decode_token(token)
     
@@ -57,8 +73,12 @@ def get_current_user_optional(
     db: Session = Depends(get_db)
 ) -> User | None:
     """
-    Get the current user if authenticated, None otherwise.
-    Useful for endpoints that work with or without authentication.
+    Obtiene el usuario actual si está autenticado, None en caso contrario.
+    
+    Útil para endpoints que funcionan con o sin autenticación.
+    
+    Returns:
+        Usuario autenticado o None
     """
     try:
         return get_current_user(token, db)

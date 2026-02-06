@@ -1,5 +1,6 @@
 """
-Authentication router - Login and token endpoints.
+Router de Autenticación.
+Endpoints para login y obtención de tokens.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -20,12 +21,17 @@ async def login_for_access_token(
     db: Session = Depends(get_db)
 ) -> Token:
     """
-    OAuth2 compatible token login.
+    Login compatible con OAuth2 para obtener token de acceso.
     
-    - **username**: User email
-    - **password**: User password
-    
-    Returns a JWT access token.
+    Args:
+        form_data: Formulario con username (email) y password
+        db: Sesión de base de datos
+        
+    Returns:
+        Token JWT de acceso
+        
+    Raises:
+        InvalidCredentialsException: Si las credenciales son inválidas
     """
     user = user_service.authenticate_user(db, form_data.username, form_data.password)
     

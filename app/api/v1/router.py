@@ -1,5 +1,6 @@
 """
-API v1 Router - Aggregates all v1 routers.
+Router principal de API v1.
+Agrupa todos los routers de la versión 1.
 """
 from fastapi import APIRouter
 
@@ -9,7 +10,7 @@ from app.api.v1.me import router as me_router
 
 router = APIRouter()
 
-# Include all routers with their prefixes
+# Incluir todos los routers con sus prefijos
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
 router.include_router(users_router, prefix="/users", tags=["users"])
 router.include_router(me_router, prefix="/me", tags=["me"])

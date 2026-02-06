@@ -1,5 +1,6 @@
 """
-User SQLAlchemy model.
+Modelo SQLAlchemy de Usuario.
+Define la estructura de la tabla users en la base de datos.
 """
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
@@ -8,7 +9,18 @@ from app.core.database import Base
 
 
 class User(Base):
-    """User database model."""
+    """
+    Modelo de usuario para la base de datos.
+    
+    Atributos:
+        id: Identificador único (clave primaria)
+        email: Correo electrónico (único, indexado)
+        password: Contraseña hasheada con bcrypt
+        name: Nombre del usuario
+        lastname: Apellido del usuario
+        created_at: Fecha de creación (automática)
+        updated_at: Fecha de última actualización (automática)
+    """
     
     __tablename__ = "users"
     
@@ -21,4 +33,5 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     def __repr__(self) -> str:
+        """Representación legible del usuario."""
         return f"<User {self.email}>"

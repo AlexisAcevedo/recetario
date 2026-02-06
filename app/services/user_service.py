@@ -1,5 +1,6 @@
 """
-User service - Business logic for user operations.
+Servicio de Usuario - Lógica de negocio para operaciones de usuarios.
+Contiene todas las operaciones CRUD y autenticación.
 """
 from typing import Optional, List
 
@@ -13,32 +14,67 @@ from app.core.exceptions import UserNotFoundException, UserAlreadyExistsExceptio
 
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
-    """Get a user by ID."""
+    """
+    Obtiene un usuario por su ID.
+    
+    Args:
+        db: Sesión de base de datos
+        user_id: ID del usuario a buscar
+        
+    Returns:
+        Usuario encontrado o None si no existe
+    """
     return db.query(User).filter(User.id == user_id).first()
 
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    """Get a user by email."""
+    """
+    Obtiene un usuario por su email.
+    
+    Args:
+        db: Sesión de base de datos
+        email: Email del usuario a buscar
+        
+    Returns:
+        Usuario encontrado o None si no existe
+    """
     return db.query(User).filter(User.email == email).first()
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
-    """Get a list of users with pagination."""
+    """
+    Obtiene una lista de usuarios con paginación.
+    
+    Args:
+        db: Sesión de base de datos
+        skip: Número de registros a omitir
+        limit: Máximo de registros a retornar
+        
+    Returns:
+        Lista de usuarios
+    """
     return db.query(User).offset(skip).limit(limit).all()
 
 
 def create_user(db: Session, user_data: UserCreate) -> User:
     """
-    Create a new user.
+    Crea un nuevo usuario.
     
+    Args:
+        db: Sesión de base de datos
+        user_data: Datos del usuario a crear
+        
+    Returns:
+        Usuario creado
+        
     Raises:
-        UserAlreadyExistsException: If email already exists
+        UserAlreadyExistsException: Si el email ya está registrado
     """
-    # Check if email already exists
+    # Verificar si el email ya existe
     if get_user_by_email(db, user_data.email):
         raise UserAlreadyExistsException()
     
-    # Create user with hashed password
+    # Crear usuario con contraseña hasheada
     user = User(
         email=user_data.email,
         password=get_password_hash(user_data.password),
@@ -58,19 +94,27 @@ def create_user(db: Session, user_data: UserCreate) -> User:
 
 def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
     """
-    Update an existing user.
+    Actualiza un usuario existente.
     
+    Args:
+        db: Sesión de base de datos
+        user_id: ID del usuario a actualizar
+        user_data: Datos nuevos (solo campos proporcionados)
+        
+    Returns:
+        Usuario actualizado
+        
     Raises:
-        UserNotFoundException: If user doesn't exist
+        UserNotFoundException: Si el usuario no existe
     """
     user = get_user_by_id(db, user_id)
     if not user:
         raise UserNotFoundException()
     
-    # Update only provided fields
+    # Actualizar solo campos proporcionados
     update_data = user_data.model_dump(exclude_unset=True)
     
-    # Hash password if being updated
+    # Hashear contraseña si se está actualizando
     if "password" in update_data:
         update_data["password"] = get_password_hash(update_data["password"])
     
@@ -84,10 +128,17 @@ def update_user(db: Session, user_id: int, user_data: UserUpdate) -> User:
 
 def delete_user(db: Session, user_id: int) -> bool:
     """
-    Delete a user.
+    Elimina un usuario.
     
+    Args:
+        db: Sesión de base de datos
+        user_id: ID del usuario a eliminar
+        
+    Returns:
+        True si se eliminó correctamente
+        
     Raises:
-        UserNotFoundException: If user doesn't exist
+        UserNotFoundException: Si el usuario no existe
     """
     user = get_user_by_id(db, user_id)
     if not user:
@@ -100,10 +151,15 @@ def delete_user(db: Session, user_id: int) -> bool:
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     """
-    Authenticate a user by email and password.
+    Autentica un usuario por email y contraseña.
     
+    Args:
+        db: Sesión de base de datos
+        email: Email del usuario
+        password: Contraseña en texto plano
+        
     Returns:
-        User if credentials are valid, None otherwise
+        Usuario si las credenciales son válidas, None en caso contrario
     """
     user = get_user_by_email(db, email)
     if not user:

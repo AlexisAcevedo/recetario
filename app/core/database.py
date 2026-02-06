@@ -1,30 +1,37 @@
 """
-Database configuration and session management.
+Configuración de la base de datos.
+Maneja la conexión a PostgreSQL usando SQLAlchemy.
 """
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
-from typing import Generator
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-# Create engine with connection pool settings for PostgreSQL
+# Crear motor de base de datos con pool de conexiones
 engine = create_engine(
     settings.database_url,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_recycle=300,    # Recycle connections every 5 min
+    pool_pre_ping=True,  # Verifica conexión antes de usar
+    pool_size=5,         # Conexiones en el pool
+    max_overflow=10      # Conexiones adicionales permitidas
 )
 
-# Session factory
+# Fábrica de sesiones de base de datos
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for models
+# Clase base para modelos SQLAlchemy
 Base = declarative_base()
 
 
-def get_db() -> Generator:
+def get_db():
     """
-    Dependency that provides a database session.
-    Yields a session and ensures it's closed after use.
+    Generador de sesiones de base de datos.
+    
+    Uso como dependencia de FastAPI para inyectar sesión en endpoints.
+    La sesión se cierra automáticamente al finalizar la request.
+    
+    Yields:
+        Session: Sesión de SQLAlchemy
     """
     db = SessionLocal()
     try:
