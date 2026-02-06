@@ -12,11 +12,14 @@
 | **Base de datos** | PostgreSQL/SQLite | PostgreSQL (Supabase) | ⭐⭐⭐⭐ |
 | **Validación** | Básica | EmailStr, min/max length | ⭐⭐⭐⭐ |
 | **Errores** | HTTPException genéricas | Excepciones personalizadas | ⭐⭐⭐⭐ |
-| **Seguridad** | passlib | bcrypt directo | ⭐⭐⭐ |
-| **Tests** | Ninguno | 17 tests automatizados | ⭐⭐⭐⭐⭐ |
+| **Seguridad** | passlib | bcrypt directo + refresh tokens | ⭐⭐⭐⭐⭐ |
+| **Tests** | Ninguno | 47 tests automatizados (7 archivos) | ⭐⭐⭐⭐⭐ |
 | **Documentación** | README básico | Docs completa en español | ⭐⭐⭐⭐⭐ |
 | **Timestamps** | Sin tracking | created_at, updated_at | ⭐⭐⭐⭐ |
 | **Config** | Hardcoded | pydantic-settings | ⭐⭐⭐⭐⭐ |
+| **Rate Limiting** | Ninguno | slowapi (por IP/usuario) | ⭐⭐⭐⭐ |
+| **Observabilidad** | Ninguna | Sentry + logging estructurado | ⭐⭐⭐⭐⭐ |
+| **Caché** | Ninguno | Redis con fallback a memoria | ⭐⭐⭐⭐ |
 
 ---
 
@@ -45,16 +48,20 @@ recetario/
 recetario/
 ├── app/
 │   ├── core/           # Configuración central
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── security.py
-│   │   └── exceptions.py
+│   │   ├── config.py       # Settings con pydantic
+│   │   ├── database.py     # Conexión a BD
+│   │   ├── security.py     # JWT + bcrypt
+│   │   ├── exceptions.py   # Excepciones custom
+│   │   ├── limiter.py      # Rate limiting
+│   │   ├── logging.py      # Logging estructurado
+│   │   ├── sentry.py       # Error tracking
+│   │   └── metrics.py      # Métricas Prometheus
 │   ├── models/         # Capa de datos
 │   ├── schemas/        # Validación
 │   ├── services/       # Lógica de negocio
 │   ├── api/v1/         # Capa HTTP
 │   └── main.py
-└── tests/              # Suite de tests
+└── tests/              # Suite de tests (7 archivos)
 ```
 
 **¿Por qué es mejor?**
@@ -63,6 +70,7 @@ recetario/
 - **Navegabilidad**: Fácil encontrar código por función
 - **Escalabilidad**: Agregar entidades es trivial
 - **Convención**: Sigue patrones de la industria
+- **Observabilidad**: Logging, métricas y error tracking integrados
 
 ---
 
@@ -259,20 +267,27 @@ class User(Base):
 
 ```
 tests/
-├── conftest.py      # Fixtures (BD en memoria, auth)
-├── test_auth.py     # 3 tests de login
-├── test_users.py    # 8 tests de CRUD
-└── test_me.py       # 6 tests de perfil
+├── conftest.py          # Fixtures (BD en memoria, auth)
+├── test_auth.py         # Tests de login y logout
+├── test_users.py        # Tests de CRUD de usuarios
+├── test_me.py           # Tests de perfil de usuario
+├── test_roles.py        # Tests de gestión de roles
+├── test_sessions.py     # Tests de sesiones y refresh tokens
+├── test_rate_limit.py   # Tests de rate limiting
+└── test_e2e_flows.py    # Tests de flujos end-to-end
 
-Total: 17 tests automatizados
+Total: 47 tests automatizados
 ```
 
 **Cobertura**:
-- Autenticación (login válido/inválido)
-- Creación de usuarios (válido, duplicado, email inválido)
-- Lectura de usuarios (por ID, listado)
+- Autenticación (login válido/inválido, refresh tokens)
+- Creación de usuarios (válido, duplicado, email inválido, contraseña débil)
+- Lectura de usuarios (por ID, listado paginado)
 - Perfil (get, update, delete)
 - Autorización (endpoints protegidos)
+- Rate limiting (límites por IP/usuario)
+- Roles y permisos
+- Flujos E2E completos
 
 ---
 
@@ -298,16 +313,96 @@ app.include_router(api_v1_router, prefix="/api/v1")
 
 ---
 
+### 9. Rate Limiting
+
+#### Legacy
+
+```
+❌ Sin protección contra abuso
+```
+
+#### Nueva Versión (`app/core/limiter.py`)
+
+```python
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+```
+
+```python
+# En endpoints críticos
+@app.post("/auth/login")
+@limiter.limit("5/minute")
+async def login(request: Request, ...):
+    ...
+```
+
+**Mejoras**:
+- ✅ Protección contra ataques de fuerza bruta
+- ✅ Límites por IP
+- ✅ Configurable por endpoint
+- ✅ Headers informativos (X-RateLimit-*)
+
+---
+
+### 10. Observabilidad
+
+#### Legacy
+
+```
+❌ Sin logging estructurado
+❌ Sin error tracking
+❌ Sin métricas
+```
+
+#### Nueva Versión
+
+**Logging Estructurado** (`app/core/logging.py`):
+```python
+# Logs en formato JSON para análisis
+configure_logging()
+```
+
+**Error Tracking** (`app/core/sentry.py`):
+```python
+# Integración con Sentry
+init_sentry()  # DSN desde variables de entorno
+```
+
+**Métricas** (`app/core/metrics.py`):
+```python
+# Endpoint /metrics para Prometheus
+get_metrics()
+```
+
+**Cache** (`main.py`):
+```python
+# Redis con fallback automático a memoria
+redis = aioredis.from_url("redis://localhost")
+FastAPICache.init(RedisBackend(redis))
+```
+
+**Mejoras**:
+- ✅ Logs estructurados (JSON) para análisis
+- ✅ Error tracking automático con Sentry
+- ✅ Métricas para Prometheus/Grafana
+- ✅ Cache con Redis + fallback inteligente
+
+---
+
 ## 📈 Métricas de Mejora
 
 | Métrica | Legacy | Nueva | Cambio |
 |---------|--------|-------|--------|
-| Archivos Python | 9 | 15 | +67% (mejor organización) |
-| Líneas de código | ~300 | ~650 | +117% (más robusto) |
-| Tests | 0 | 17 | ∞ |
-| Validaciones | 0 | 5+ | ∞ |
+| Archivos Python | 9 | 20+ | +122% (mejor organización) |
+| Líneas de código | ~300 | ~900 | +200% (más robusto) |
+| Tests | 0 | 47 | ∞ |
+| Archivos de test | 0 | 7 | ∞ |
+| Validaciones | 0 | 8+ | ∞ |
 | Excepciones custom | 0 | 4 | ∞ |
 | Docs en español | 0 | 3 archivos | ∞ |
+| Módulos de observabilidad | 0 | 4 (logging, sentry, metrics, limiter) | ∞ |
 
 ---
 
