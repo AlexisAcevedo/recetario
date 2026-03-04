@@ -55,13 +55,6 @@ async def lifespan(app: FastAPI):
         # logger.warning(f"Redis connection failed, using InMemory cache: {e}")
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
     
-    # Inicio: Crear tablas en la base de datos
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        # Se captura el error para no bloquear el inicio en entornos de test o si la DB está temporalmente caída
-        print(f"Advertencia: No se pudieron crear las tablas iniciales: {e}")
-        
     yield
     # Cierre: Limpieza si es necesaria
     pass

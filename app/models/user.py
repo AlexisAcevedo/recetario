@@ -36,7 +36,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
     # Relación con Role
-    role = relationship("Role", back_populates="users")
+    role = relationship("Role", back_populates="users", lazy="selectin")
     
     def has_permission(self, permission_name: str) -> bool:
         """Verifica si el usuario tiene un permiso específico."""

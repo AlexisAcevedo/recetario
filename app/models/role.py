@@ -61,7 +61,8 @@ class Role(Base):
     permissions = relationship(
         "Permission",
         secondary=role_permissions,
-        backref="roles"
+        backref="roles",
+        lazy="selectin"
     )
     
     # Relación con usuarios

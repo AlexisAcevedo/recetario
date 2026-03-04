@@ -2,14 +2,14 @@
 Dependencias de la API.
 Funciones reutilizables para inyección de dependencias en endpoints.
 """
-from typing import Generator
+from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError
 
-from app.core.database import SessionLocal
+from app.core.database import AsyncSessionLocal
 from app.core.security import decode_token
 from app.core.exceptions import NotAuthenticatedException
 from app.models.user import User
@@ -19,39 +19,23 @@ from app.schemas.token import TokenData
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
 
 
-def get_db() -> Generator:
+async def get_db() -> AsyncGenerator:
     """
-    Proporciona una sesión de base de datos.
-    
-    Se usa como dependencia de FastAPI para inyectar
-    la sesión en los endpoints automáticamente.
-    
-    Yields:
-        Session: Sesión de SQLAlchemy
+    Proporciona una sesión de base de datos asíncrona.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ) -> User:
     """
-    Obtiene el usuario actual autenticado desde el token JWT.
-    
-    Args:
-        token: Token JWT del header Authorization
-        db: Sesión de base de datos
-        
-    Returns:
-        Usuario autenticado
-        
-    Raises:
-        NotAuthenticatedException: Si el token es inválido o el usuario no existe
+    Obtiene el usuario actual autenticado (Asíncrono).
     """
     payload = decode_token(token)
     
@@ -62,11 +46,16 @@ def get_current_user(
     if user_id is None:
         raise NotAuthenticatedException()
     
-    user = db.query(User).filter(User.id == user_id).first()
+    # SQLAlchemy 2.0 select style for better async support
+    from sqlalchemy import select
+    result = await db.execute(select(User).filter(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
     if user is None:
         raise NotAuthenticatedException()
     
     return user
+
 
 
 def get_current_user_optional(

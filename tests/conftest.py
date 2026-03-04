@@ -1,13 +1,13 @@
 """
-Fixtures de prueba para la API de recetario.
-Configura base de datos en memoria y helpers de autenticación.
+Fixtures de prueba asíncronas para la API de recetario.
 """
+import asyncio
 import pytest
-from typing import Generator, Dict
+import pytest_asyncio
+from typing import AsyncGenerator, Dict
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import StaticPool
 
 from app.main import app
@@ -15,82 +15,93 @@ from app.core.database import Base
 from app.api.deps import get_db
 from app.core.security import get_password_hash
 from app.models.user import User
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
-# Base de datos de prueba (SQLite en memoria)
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+# Inicializar caché para tests
+FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache-test")
 
-engine = create_engine(
+# Desactivar rate limiting para tests
+app.state.limiter.enabled = False
+
+# Base de datos de prueba asíncrona (SQLite en memoria)
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal = async_sessionmaker(
+    autocommit=False, 
+    autoflush=False, 
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 
-@pytest.fixture(scope="function", autouse=True)
-def setup_database():
-    """Crea y elimina tablas para cada test."""
-    # Reset rate limiter para evitar acumulación entre tests
-    from app.core.limiter import limiter
-    try:
-        limiter.reset()
-    except Exception:
-        pass  # Limiter puede no tener estado en tests
-    
-    Base.metadata.create_all(bind=engine)
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def setup_database():
+    """Crea y elimina tablas para cada test (Async)."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
-    Base.metadata.drop_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
-def override_get_db():
-    """Sobreescribe la dependencia de base de datos para tests."""
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def override_get_db() -> AsyncGenerator:
+    """Sobreescribe la dependencia de base de datos (Async)."""
+    async with TestingSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
 
 
-@pytest.fixture(scope="function")
-def db() -> Generator:
-    """Proporciona una sesión de base de datos para tests."""
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+@pytest_asyncio.fixture(scope="function")
+async def db() -> AsyncGenerator:
+    """Proporciona una sesión de base de datos para tests (Async)."""
+    async with TestingSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
 
 
-@pytest.fixture(scope="function")
-def client() -> Generator:
-    """Crea un cliente de prueba con base de datos sobreescrita."""
+@pytest_asyncio.fixture(scope="function")
+async def client() -> AsyncGenerator:
+    """Crea un cliente HTTP asíncrono."""
     app.dependency_overrides[get_db] = override_get_db
     
-    with TestClient(app) as c:
+    # Usar transport para mayor compatibilidad con ASGIs complejos
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
     
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def test_user(db) -> User:
-    """Crea un usuario de prueba en la base de datos."""
+@pytest_asyncio.fixture
+async def test_user(db: AsyncSession) -> User:
+    """Crea un usuario de prueba (Async)."""
     user = User(
         email="test@example.com",
-        password=get_password_hash("TestPass123!@#"),  # Contraseña fuerte
+        password=get_password_hash("TestPass123!@#"),
         name="Test",
         lastname="User"
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
-@pytest.fixture
-def auth_headers(client, test_user) -> Dict[str, str]:
-    """Obtiene headers de autenticación para el usuario de prueba."""
-    response = client.post(
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient, test_user: User) -> Dict[str, str]:
+    """Obtiene headers de autenticación (Async)."""
+    response = await client.post(
         "/api/v1/auth/token",
         data={"username": "test@example.com", "password": "TestPass123!@#"}
     )

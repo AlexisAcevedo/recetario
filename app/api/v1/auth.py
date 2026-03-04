@@ -1,21 +1,18 @@
 """
-Router de Autenticación.
-Endpoints para login, refresh y obtención de tokens.
+Router de Autenticación asíncrono.
 """
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import timedelta
 
-from app.api.deps import get_db
+from app.core import security
+from app.core.config import settings
+from app.api import deps
 from app.schemas.token import Token
 from app.schemas.session import RefreshTokenRequest
 from app.services import user_service
-from app.core.security import create_session_with_tokens, refresh_access_token
-from app.core.exceptions import InvalidCredentialsException
 from app.core.limiter import limiter
-from app.core.logging import get_logger
-
-logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -24,92 +21,48 @@ router = APIRouter()
 @limiter.limit("5/minute")
 async def login_for_access_token(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(deps.get_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Token:
     """
-    Login compatible con OAuth2 para obtener tokens de acceso y refresh.
-    
-    Args:
-        request: Request HTTP para obtener IP y device info
-        form_data: Formulario con username (email) y password
-        db: Sesión de base de datos
-        
-    Returns:
-        Par de tokens (access + refresh)
-        
-    Raises:
-        InvalidCredentialsException: Si las credenciales son inválidas
+    Login OAuth2 compatible (Async).
     """
-    user = user_service.authenticate_user(db, form_data.username, form_data.password)
-    
+    user = await user_service.authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        # Log de login fallido
-        logger.warning(
-            "login_failed",
-            email=form_data.username,
-            ip=request.client.host if request.client else None,
-            reason="invalid_credentials"
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email o contraseña incorrectos",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-        raise InvalidCredentialsException()
     
-    # Obtener info del cliente
-    device_info = request.headers.get("User-Agent", "Unknown")
-    ip_address = request.client.host if request.client else None
+    # Crear tokens y sesión
+    access_token, refresh_token = await security.create_session_with_tokens(db, user.id)
     
-    # Crear sesión y obtener tokens
-    access_token, refresh_token = create_session_with_tokens(
-        db=db,
-        user_id=user.id,
-        device_info=device_info,
-        ip_address=ip_address
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
     )
-    
-    # Log de login exitoso
-    logger.info(
-        "login_success",
-        user_id=user.id,
-        email=user.email,
-        ip=ip_address,
-        device=device_info
-    )
-    
-    return Token(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
     token_request: RefreshTokenRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(deps.get_db)
 ) -> Token:
     """
-    Renueva el access token usando un refresh token válido.
-    
-    Args:
-        token_request: Request con el refresh token
-        db: Sesión de base de datos
-        
-    Returns:
-        Nuevo access token
-        
-    Raises:
-        InvalidCredentialsException: Si el refresh token es inválido o expirado
+    Renueva un access token usando un refresh token (Async).
     """
-    result = refresh_access_token(db, token_request.refresh_token)
-    
-    if not result:
-        logger.warning(
-            "refresh_token_failed",
-            reason="invalid_or_expired"
+    new_tokens = await security.refresh_access_token(db, token_request.refresh_token)
+    if not new_tokens:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token inválido o expirado"
         )
-        raise InvalidCredentialsException(detail="Refresh token inválido o expirado")
     
-    access_token, user_id = result
-    
-    # Log de refresh exitoso
-    logger.info(
-        "refresh_token_success",
-        user_id=user_id
+    access_token, refresh_token = new_tokens
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
     )
-    
-    return Token(access_token=access_token)

@@ -45,7 +45,7 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 
 ### 1. Middleware Layer (`app/core/middleware.py`)
 
-**Responsabilidad**: Interceptar peticiones globalmente para aplicar políticas de seguridad.
+**Responsabilidad**: Interceptar peticiones globalmente para aplicar políticas de seguridad de forma no bloqueante.
 
 - **Security Headers**: Inyecta cabeceras OWASP (CSP, HSTS, X-Frame-Options).
 - **CORS Endurecido**: Gestiona orígenes permitidos con validación de entorno.
@@ -53,111 +53,47 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 
 ### 2. API Layer (`app/api/`)
 
-**Responsabilidad**: Manejo de requests HTTP, validación de entrada, serialización de respuestas.
+**Responsabilidad**: Manejo de requests HTTP **asíncronas**, validación de entrada, serialización de respuestas.
 
 | Archivo | Descripción |
 |---------|-------------|
-| `deps.py` | Dependencias compartidas (get_db, get_current_user) |
-| `v1/auth.py` | Endpoints de autenticación |
-| `v1/users.py` | Endpoints CRUD de usuarios |
-| `v1/me.py` | Endpoints del perfil actual |
-| `v1/router.py` | Agregador de routers |
-
-**Principios**:
-- Los routers NO contienen lógica de negocio
-- Delegan a servicios para operaciones
-- Manejan solo HTTP y validación
+| `deps.py` | Dependencias asíncronas (`get_db`, `get_current_user`). |
+| `v1/auth.py` | Endpoints de autenticación asíncronos. |
+| `v1/users.py` | Endpoints CRUD de usuarios asíncronos. |
+| `v1/me.py` | Endpoints del perfil actual asíncronos. |
+| `v1/roles.py` | Gestión de RBAC asíncrona. |
 
 ### 3. Service Layer (`app/services/`)
 
-**Responsabilidad**: Lógica de negocio, reglas de dominio.
+**Responsabilidad**: Lógica de negocio mediante corrutinas (`async def`).
 
 | Archivo | Funciones |
 |---------|-----------|
-| `user_service.py` | CRUD, autenticación, validaciones |
-
-**Principios**:
-- Contiene TODA la lógica de negocio
-- Agnóstico al framework (no conoce FastAPI)
-- Fácil de testear unitariamente
+| `user_service.py` | CRUD, autenticación, mitigación de timing attacks con `asyncio.sleep`. |
 
 ### 4. Model Layer (`app/models/`)
 
-**Responsabilidad**: Definición de entidades de base de datos.
+**Responsabilidad**: Entidades de DB compatibles con SQLAlchemy 2.0 y Async.
 
-| Archivo | Tabla |
-|---------|-------|
-| `user.py` | `users` |
-| `role.py` | `roles` (RBAC) |
-| `session.py` | `sessions` (Refresh Tokens) |
+- **Eager Loading**: Uso de `lazy="selectin"` para evitar errores de `MissingGreenlet` al acceder a relaciones en contextos asíncronos.
 
-**Principios**:
-- Solo definición de tablas
-- Sin lógica de negocio
-- Mapeo ORM con SQLAlchemy 2.0
+### 5. Core Layer (`app/core/`)
 
-### 5. Schema Layer (`app/schemas/`)
+**Responsabilidad**: Configuración y motores asíncronos.
 
-**Responsabilidad**: Validación de datos con Pydantic v2.
-
-| Archivo | Esquemas |
-|---------|----------|
-| `user.py` | UserCreate, UserUpdate, UserResponse |
-| `token.py` | Token, TokenData |
-| `session.py` | SessionResponse, TokenPair |
-
-### 6. Core Layer (`app/core/`)
-
-**Responsabilidad**: Configuración central y utilidades transversales.
-
-| Archivo | Función |
-|---------|---------|
-| `config.py` | Variables de entorno (con validación de entropía) |
-| `database.py` | Conexión a PostgreSQL |
-| `security.py` | JWT y bcrypt |
-| `logging.py` | Logging estructurado con enmascaramiento de secretos (OWASP A09) |
-| `middleware.py` | Implementación de cabeceras de seguridad |
-
----
-
-## 🔄 Flujo de una Request
-
-```
-1. Cliente hace POST /api/v1/users
-        │
-2. Middleware inyecta cabeceras de seguridad
-        │
-3. FastAPI valida UserCreate (schema Pydantic v2)
-        │
-4. Router recibe request validada
-        │
-5. Router inyecta Session (deps.py)
-        │
-6. Router llama user_service.create_user()
-        │
-7. Service hashea password, crea User
-        │
-8. Service hace commit a PostgreSQL
-        │
-9. Service retorna User
-        │
-10. Router serializa a UserResponse
-        │
-11. Cliente recibe JSON + Security Headers
-```
+- **`database.py`**: Motor `AsyncEngine` y `AsyncSessionLocal`.
+- **`security.py`**: Utilidades de JWT y bcrypt (ejecutadas de forma eficiente).
+- **`logging.py`**: Logging JSON con enmascaramiento.
 
 ---
 
 ### 🔐 Seguridad y Autenticación (OWASP 2025)
-1. **Defensa en Profundidad**: Aplicación de múltiples capas de seguridad (Middleware, ORM, Pydantic).
-2. **Login**: Usuario envía credenciales -> Recibe `access_token` (JWT corta duración) y `refresh_token`.
-3. **Uso de API**: Cliente envía `Authorization: Bearer <access_token>`.
-4. **Renovación**: Cuando `access_token` expira, cliente usa `refresh_token` en endpoint `/refresh` para obtener nuevo par.
-5. **Logging Seguro**: Implementación de `filter_secrets` para evitar fuga de PII y secretos en logs.
-6. **Validación de Secretos**: Requisito de entropía alta para `SECRET_KEY` (min 32 chars).
-7. **CORS**: Configuración restrictiva; falla si se usa `*` en producción.
-8. **RBAC**: Middleware verifica roles en endpoints protegidos (ej: `admin`, `moderator`).
-9. **Rate Limiting**: `SlowAPI` limita peticiones por IP para prevenir abusos.
+1. **Defensa en Profundidad**: Múltiples capas de seguridad asíncronas.
+2. **Concurrencia Segura**: Uso de `asyncio.sleep` para timing attacks sin bloquear el hilo principal.
+3. **Eager Relationship Loading**: Configuración de modelos para cargar relaciones automáticamente en async.
+4. **Logging Seguro**: Implementación de `filter_secrets` para evitar fuga de PII y secretos.
+5. **Validación de Secretos**: Requisito de entropía alta para `SECRET_KEY` (min 32 chars).
+6. **Rate Limiting**: Integrado nativamente en el flujo asíncrono de FastAPI.
 
 ---
 

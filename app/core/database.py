@@ -1,40 +1,46 @@
 """
-Configuración de la base de datos.
-Maneja la conexión a PostgreSQL usando SQLAlchemy.
+Configuración de la base de datos asíncrona.
+Maneja la conexión a PostgreSQL usando SQLAlchemy 2.0 (Asyncio).
 """
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.orm import declarative_base
 
 from app.core.config import settings
 
-# Crear motor de base de datos con pool de conexiones
-engine = create_engine(
-    settings.database_url,
-    pool_pre_ping=True,  # Verifica conexión antes de usar
-    pool_size=5,         # Conexiones en el pool
-    max_overflow=10      # Conexiones adicionales permitidas
+# Asegurar que la URL use el esquema asíncrono
+db_url = settings.database_url
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+# Crear motor asíncrono
+engine = create_async_engine(
+    db_url,
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
+    echo=False  # Cambiar a True para debug de SQL
 )
 
-# Fábrica de sesiones de base de datos
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Fábrica de sesiones asíncronas
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False
+)
 
-# Clase base para modelos SQLAlchemy
+# Clase base para modelos (Uso de SQLAlchemy 2.0 compatible)
 Base = declarative_base()
 
 
-def get_db():
+async def get_db():
     """
-    Generador de sesiones de base de datos.
-    
-    Uso como dependencia de FastAPI para inyectar sesión en endpoints.
-    La sesión se cierra automáticamente al finalizar la request.
-    
-    Yields:
-        Session: Sesión de SQLAlchemy
+    Generador de sesiones asíncronas.
     """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+        finally:
+            await db.close()
+

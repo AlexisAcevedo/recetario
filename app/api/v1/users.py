@@ -1,11 +1,10 @@
 """
-Router de Usuarios.
-Endpoints CRUD para gestión de usuarios.
+Router de Usuarios asíncrono.
 """
 from typing import List
 
 from fastapi import APIRouter, Depends, status, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user
 from app.schemas.user import UserCreate, UserResponse
@@ -23,23 +22,13 @@ async def get_users(
     request: Request,
     page: int = 1,
     per_page: int = 100,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> PaginatedResponse[UserResponse]:
-    """
-    Obtiene todos los usuarios con paginación (requiere autenticación).
-    
-    Args:
-        request: Request con IP para rate limiting
-        page: Número de página (1-based)
-        per_page: Usuarios por página
-        
-    Returns:
-        Objeto paginado con lista de usuarios y metadatos
-    """
+    """Obtiene todos los usuarios con paginación (Async)."""
     skip = (page - 1) * per_page
-    users = user_service.get_users(db, skip=skip, limit=per_page)
-    total = user_service.count_users(db)
+    users = await user_service.get_users(db, skip=skip, limit=per_page)
+    total = await user_service.count_users(db)
     
     total_pages = (total + per_page - 1) // per_page
     
@@ -57,22 +46,10 @@ async def get_users(
 async def get_user(
     request: Request,
     user_id: int,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ) -> UserResponse:
-    """
-    Obtiene un usuario por su ID.
-    
-    Args:
-        request: Request con IP para rate limiting
-        user_id: ID del usuario a buscar
-        
-    Returns:
-        Datos del usuario
-        
-    Raises:
-        404: Si el usuario no existe
-    """
-    user = user_service.get_user_by_id(db, user_id)
+    """Obtiene un usuario por su ID (Async)."""
+    user = await user_service.get_user_by_id(db, user_id)
     if not user:
         from app.core.exceptions import UserNotFoundException
         raise UserNotFoundException()
@@ -84,19 +61,7 @@ async def get_user(
 async def create_user(
     request: Request,
     user_data: UserCreate,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ) -> UserResponse:
-    """
-    Crea un nuevo usuario.
-    
-    Args:
-        request: Request con IP para rate limiting
-        user_data: Datos del usuario a crear
-        
-    Returns:
-        Usuario creado
-        
-    Raises:
-        400: Si el email ya está registrado
-    """
-    return user_service.create_user(db, user_data)
+    """Crea un nuevo usuario (Async)."""
+    return await user_service.create_user(db, user_data)
