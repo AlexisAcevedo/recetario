@@ -13,7 +13,12 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 │              Clientes                    │
 │        (Frontend, Postman, etc.)        │
 └─────────────────┬───────────────────────┘
-                  │ HTTP
+                  │ HTTP (Security Headers)
+┌─────────────────▼───────────────────────┐
+│         Middleware Layer (Global)        │
+│    Auth │ CORS │ Security Headers        │
+└─────────────────┬───────────────────────┘
+                  │
 ┌─────────────────▼───────────────────────┐
 │           API Layer (Routers)            │
 │      auth.py │ users.py │ me.py         │
@@ -28,7 +33,7 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 │          Model Layer (Datos)             │
 │             user.py (ORM)                │
 └─────────────────┬───────────────────────┘
-                  │ SQLAlchemy
+                  │ SQLAlchemy 2.0
 ┌─────────────────▼───────────────────────┐
 │         PostgreSQL (Supabase)            │
 └─────────────────────────────────────────┘
@@ -38,7 +43,15 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 
 ## 🏗️ Capas del Sistema
 
-### 1. API Layer (`app/api/`)
+### 1. Middleware Layer (`app/core/middleware.py`)
+
+**Responsabilidad**: Interceptar peticiones globalmente para aplicar políticas de seguridad.
+
+- **Security Headers**: Inyecta cabeceras OWASP (CSP, HSTS, X-Frame-Options).
+- **CORS Endurecido**: Gestiona orígenes permitidos con validación de entorno.
+- **Rate Limiting**: (SlowAPI) Previene DoS y fuerza bruta.
+
+### 2. API Layer (`app/api/`)
 
 **Responsabilidad**: Manejo de requests HTTP, validación de entrada, serialización de respuestas.
 
@@ -55,7 +68,7 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 - Delegan a servicios para operaciones
 - Manejan solo HTTP y validación
 
-### 2. Service Layer (`app/services/`)
+### 3. Service Layer (`app/services/`)
 
 **Responsabilidad**: Lógica de negocio, reglas de dominio.
 
@@ -68,38 +81,42 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 - Agnóstico al framework (no conoce FastAPI)
 - Fácil de testear unitariamente
 
-### 3. Model Layer (`app/models/`)
+### 4. Model Layer (`app/models/`)
 
 **Responsabilidad**: Definición de entidades de base de datos.
 
 | Archivo | Tabla |
 |---------|-------|
 | `user.py` | `users` |
+| `role.py` | `roles` (RBAC) |
+| `session.py` | `sessions` (Refresh Tokens) |
 
 **Principios**:
 - Solo definición de tablas
 - Sin lógica de negocio
-- Mapeo ORM con SQLAlchemy
+- Mapeo ORM con SQLAlchemy 2.0
 
-### 4. Schema Layer (`app/schemas/`)
+### 5. Schema Layer (`app/schemas/`)
 
-**Responsabilidad**: Validación de datos con Pydantic.
+**Responsabilidad**: Validación de datos con Pydantic v2.
 
 | Archivo | Esquemas |
 |---------|----------|
 | `user.py` | UserCreate, UserUpdate, UserResponse |
 | `token.py` | Token, TokenData |
+| `session.py` | SessionResponse, TokenPair |
 
-### 5. Core Layer (`app/core/`)
+### 6. Core Layer (`app/core/`)
 
 **Responsabilidad**: Configuración central y utilidades transversales.
 
 | Archivo | Función |
 |---------|---------|
-| `config.py` | Variables de entorno |
+| `config.py` | Variables de entorno (con validación de entropía) |
 | `database.py` | Conexión a PostgreSQL |
 | `security.py` | JWT y bcrypt |
-| `exceptions.py` | Excepciones HTTP personalizadas |
+| `logging.py` | Logging estructurado con enmascaramiento de secretos (OWASP A09) |
+| `middleware.py` | Implementación de cabeceras de seguridad |
 
 ---
 
@@ -108,34 +125,39 @@ La aplicación sigue una **arquitectura por capas** (Layered Architecture), sepa
 ```
 1. Cliente hace POST /api/v1/users
         │
-2. FastAPI valida UserCreate (schema)
+2. Middleware inyecta cabeceras de seguridad
         │
-3. Router recibe request validada
+3. FastAPI valida UserCreate (schema Pydantic v2)
         │
-4. Router inyecta Session (deps.py)
+4. Router recibe request validada
         │
-5. Router llama user_service.create_user()
+5. Router inyecta Session (deps.py)
         │
-6. Service hashea password, crea User
+6. Router llama user_service.create_user()
         │
-7. Service hace commit a PostgreSQL
+7. Service hashea password, crea User
         │
-8. Service retorna User
+8. Service hace commit a PostgreSQL
         │
-9. Router serializa a UserResponse
+9. Service retorna User
         │
-10. Cliente recibe JSON
+10. Router serializa a UserResponse
+        │
+11. Cliente recibe JSON + Security Headers
 ```
 
 ---
 
-### 🔐 Seguridad y Autenticación
-1. **Login**: Usuario envía credenciales -> Recibe `access_token` (JWT corta duración) y `refresh_token`.
-2. **Uso de API**: Cliente envía `Authorization: Bearer <access_token>`.
-3. **Renovación**: Cuando `access_token` expira, cliente usa `refresh_token` en endpoint `/refresh` para obtener nuevo par.
-4. **Logout**: Cliente revoca sesión en `/me/sessions`.
-5. **RBAC**: Middleware verifica roles en endpoints protegidos (ej: `admin`, `moderator`).
-6. **Rate Limiting**: `SlowAPI` limita peticiones por IP para prevenir abusos.
+### 🔐 Seguridad y Autenticación (OWASP 2025)
+1. **Defensa en Profundidad**: Aplicación de múltiples capas de seguridad (Middleware, ORM, Pydantic).
+2. **Login**: Usuario envía credenciales -> Recibe `access_token` (JWT corta duración) y `refresh_token`.
+3. **Uso de API**: Cliente envía `Authorization: Bearer <access_token>`.
+4. **Renovación**: Cuando `access_token` expira, cliente usa `refresh_token` en endpoint `/refresh` para obtener nuevo par.
+5. **Logging Seguro**: Implementación de `filter_secrets` para evitar fuga de PII y secretos en logs.
+6. **Validación de Secretos**: Requisito de entropía alta para `SECRET_KEY` (min 32 chars).
+7. **CORS**: Configuración restrictiva; falla si se usa `*` en producción.
+8. **RBAC**: Middleware verifica roles en endpoints protegidos (ej: `admin`, `moderator`).
+9. **Rate Limiting**: `SlowAPI` limita peticiones por IP para prevenir abusos.
 
 ---
 

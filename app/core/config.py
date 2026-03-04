@@ -5,7 +5,7 @@ Carga variables de entorno usando pydantic-settings.
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     
     # Seguridad JWT
     secret_key: str
+    
+    @field_validator("secret_key")
+    @classmethod
+    def validate_secret_key(cls, v: str) -> str:
+        if len(v) < 32:
+            raise ValueError("OWASP A04: La SECRET_KEY debe tener al menos 32 caracteres para asegurar una entropía adecuada.")
+        return v
+    
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 15  # Reducido para mayor seguridad
     refresh_token_expire_days: int = 7     # Refresh token dura más
@@ -48,7 +56,10 @@ class Settings(BaseSettings):
     
     def get_cors_origins_list(self) -> list[str]:
         """Convierte cors_origins string a lista."""
-        return [origin.strip() for origin in self.cors_origins.split(",")]
+        origins = [origin.strip() for origin in self.cors_origins.split(",")]
+        if self.environment.lower() == "production" and "*" in origins:
+            raise ValueError("OWASP A01: CORS wildcard '*' is strictly forbidden in production")
+        return origins
     
     class Config:
         env_file = ".env"

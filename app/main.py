@@ -13,6 +13,7 @@ from app.core.database import engine, Base
 from app.api.v1.router import router as api_v1_router
 from app.core.limiter import limiter
 
+from app.core.middleware import SecurityHeadersMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -55,7 +56,12 @@ async def lifespan(app: FastAPI):
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
     
     # Inicio: Crear tablas en la base de datos
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        # Se captura el error para no bloquear el inicio en entornos de test o si la DB está temporalmente caída
+        print(f"Advertencia: No se pudieron crear las tablas iniciales: {e}")
+        
     yield
     # Cierre: Limpieza si es necesaria
     pass
@@ -87,6 +93,9 @@ app.add_middleware(
         "X-Requested-With"
     ],
 )
+
+# Cabeceras de seguridad HTTP
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Incluir routers de la API
 app.include_router(api_v1_router, prefix="/api/v1")

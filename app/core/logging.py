@@ -6,6 +6,15 @@ import structlog
 import logging
 import sys
 
+def filter_secrets(logger, log_method, event_dict):
+    """
+    OWASP A09: Filtra campos sensibles de los logs para prevenir fuga de información.
+    """
+    sensitive_keys = {"password", "token", "secret", "authorization", "access_token", "refresh_token", "api_key"}
+    for key, value in event_dict.items():
+        if any(sensitive in key.lower() for sensitive in sensitive_keys):
+            event_dict[key] = "***MASKED***"
+    return event_dict
 
 def configure_logging():
     """
@@ -17,6 +26,7 @@ def configure_logging():
         processors=[
             structlog.contextvars.merge_contextvars,
             structlog.processors.add_log_level,
+            filter_secrets,  # Filtro de seguridad añadido
             structlog.processors.StackInfoRenderer(),
             structlog.dev.set_exc_info,
             structlog.processors.TimeStamper(fmt="iso", utc=True),

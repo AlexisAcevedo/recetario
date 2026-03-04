@@ -23,12 +23,17 @@ Recetario API es una aplicación backend desarrollada con **FastAPI** que propor
 
 ### Características principales:
 
-- ✅ Autenticación JWT con tokens de acceso
+- ✅ **Seguridad OWASP 2025**:
+    - **Middleware de Cabeceras HTTP**: CSP, HSTS, X-Frame-Options, X-Content-Type-Options.
+    - **CORS Endurecido**: Bloqueo automático de wildcards (`*`) en producción.
+    - **Validación de Entropía**: `SECRET_KEY` mínima de 32 caracteres requerida.
+    - **Logging Seguro**: Filtrado automático de secretos en logs estructurados.
+- ✅ Autenticación JWT con tokens de acceso (Access + Refresh)
 - ✅ **RBAC (Roles de Usuario)**: Admin, User, Moderator
 - ✅ **Refresh Tokens**: Gestión de sesiones y revocación
-- ✅ **Rate Limiting**: Protección contra ataques de fuerza bruta
+- ✅ **Rate Limiting**: Protección contra ataques de fuerza bruta (SlowAPI)
 - ✅ CRUD completo de usuarios
-- ✅ Validación de datos con Pydantic
+- ✅ Validación de datos con Pydantic v2
 - ✅ Hasheo seguro de contraseñas con bcrypt
 - ✅ Conexión a PostgreSQL (Supabase)
 - ✅ Documentación automática con Swagger/OpenAPI
@@ -47,11 +52,12 @@ Recetario API es una aplicación backend desarrollada con **FastAPI** que propor
 ### Dependencias principales:
 
 - **FastAPI** - Framework web asíncrono
-- **SQLAlchemy** - ORM para base de datos
-- **Pydantic** - Validación de datos
+- **SQLAlchemy 2.0** - ORM para base de datos
+- **Pydantic v2** - Validación de datos
 - **python-jose** - Manejo de JWT
 - **bcrypt** - Hasheo de contraseñas
-- **psycopg2** - Driver PostgreSQL
+- **structlog** - Logging estructurado y seguro
+- **SlowAPI** - Rate limiting
 
 ---
 
@@ -94,10 +100,14 @@ Crear archivo `.env` en la raíz del proyecto:
 # Base de datos PostgreSQL (Supabase)
 DATABASE_URL=postgresql://usuario:contraseña@host:puerto/database
 
-# Seguridad JWT
-SECRET_KEY=tu-clave-secreta-muy-larga-y-segura
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+# Seguridad JWT (Mínimo 32 caracteres)
+SECRET_KEY=tu-clave-secreta-muy-larga-y-segura-de-32-chars
+
+# Entorno (development | production)
+ENVIRONMENT=development
+
+# CORS (Lista separada por comas)
+CORS_ORIGINS=http://localhost:3000,http://localhost:8080
 ```
 
 ### Referencia de variables
@@ -105,9 +115,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 | Variable | Descripción | Requerido |
 |----------|-------------|-----------|
 | `DATABASE_URL` | URL de conexión a PostgreSQL | ✅ |
-| `SECRET_KEY` | Clave para firmar tokens JWT | ✅ |
-| `ALGORITHM` | Algoritmo de encriptación | ❌ (default: HS256) |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | Duración del token | ❌ (default: 30) |
+| `SECRET_KEY` | Clave para firmar tokens JWT (min 32 chars) | ✅ |
+| `ENVIRONMENT` | Entorno de ejecución (`production` activa restricciones) | ❌ |
+| `CORS_ORIGINS` | Orígenes permitidos (No `*` en producción) | ❌ |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Duración del token | ❌ (default: 15) |
+
 
 ---
 
