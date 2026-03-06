@@ -1,7 +1,7 @@
 # ADR-001: bcrypt vs Argon2 para Hashing de Contraseñas
 
 ## Estado
-✅ Aceptado
+✅ Aceptado (actualizado: migrado de passlib a bcrypt directo)
 
 ## Contexto
 
@@ -18,26 +18,26 @@ Al implementar el sistema de autenticación, necesitábamos elegir un algoritmo 
 **Elegimos bcrypt** por las siguientes razones:
 
 1. **Madurez y estabilidad**: 25+ años de uso en producción
-2. **Amplio soporte**: `passlib` lo soporta nativamente con excelente API
-3. **Facilidad de migración**: Si decidimos cambiar a Argon2, `passlib` permite migración gradual
-4. **Performance predecible**: Work factor configurable (12 rounds default)
-5. **Compatibilidad**: Funciona en todos los entornos sin dependencias adicionales
+2. **Uso directo de bcrypt**: Sin wrapper (`passlib` eliminado por incompatibilidades con Python 3.14)
+3. **Performance predecible**: Work factor configurable (12 rounds default)
+4. **Compatibilidad**: Funciona en todos los entornos sin dependencias adicionales
+5. **Control explícito**: Truncado a 72 bytes gestionado manualmente en `security.py`
 
 ## Consecuencias
 
 ### Positivas
-- API simple con `passlib[bcrypt]`
-- Verificación automática de hashes antiguos
+- API directa con `bcrypt` sin wrappers intermedios
+- Menos dependencias (eliminado `passlib`)
+- Compatible con Python 3.14+
 - Work factor ajustable según hardware
 
 ### Negativas
 - Argon2 es teóricamente más seguro contra ataques GPU
-- Límite de 72 bytes en contraseña (mitigado con pre-hashing)
+- Límite de 72 bytes en contraseña (gestionado con truncado explícito en `app/core/security.py`)
 
 ### Mitigaciones
-- Si Argon2 se vuelve necesario, `passlib` permite migración transparente
-- Pre-hashing con SHA-256 elimina límite de 72 bytes
+- Si Argon2 se vuelve necesario, la migración se puede hacer cambiando solo `security.py`
 
 ## Referencias
 - [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
-- [passlib Documentation](https://passlib.readthedocs.io/)
+- [bcrypt PyPI](https://pypi.org/project/bcrypt/)

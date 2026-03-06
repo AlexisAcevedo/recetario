@@ -127,6 +127,11 @@ tests/
 ├── test_security.py    # Tests OWASP
 └── test_e2e_flows.py   # Tests E2E
 
+alembic/
+├── env.py              # Configuración async de migraciones
+├── script.py.mako      # Template de migraciones
+└── versions/           # Migraciones generadas
+
 docs/
 ├── README.md           # Documentación técnica
 ├── ARQUITECTURA.md     # Diseño del sistema

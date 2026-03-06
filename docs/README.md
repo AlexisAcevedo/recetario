@@ -161,8 +161,13 @@ recetario/
 │   ├── test_rate_limit.py      # Tests de rate limit
 │   ├── test_security.py        # Tests de seguridad OWASP
 │   └── test_e2e_flows.py       # Tests E2E
+├── alembic/                    # Migraciones de BD
+│   ├── env.py                  # Configuración async
+│   ├── script.py.mako          # Template
+│   └── versions/               # Migraciones generadas
 ├── docs/                       # Documentación
 ├── legacy/                     # Código original (referencia)
+├── alembic.ini                 # Configuración de Alembic
 ├── .env                        # Variables de entorno
 ├── .env.example                # Template de variables
 ├── requirements.txt            # Dependencias
