@@ -127,12 +127,18 @@ recetario/
 │   │       ├── auth.py         # Endpoints de autenticación
 │   │       ├── users.py        # Endpoints de usuarios
 │   │       ├── me.py           # Endpoints de perfil
+│   │       ├── roles.py        # Endpoints de RBAC
 │   │       └── router.py       # Router agregador
 │   ├── core/                   # Configuración central
 │   │   ├── config.py           # Variables de entorno
-│   │   ├── database.py         # Conexión a BD
+│   │   ├── database.py         # Conexión a BD (AsyncEngine)
 │   │   ├── security.py         # JWT y bcrypt
-│   │   └── exceptions.py       # Excepciones HTTP
+│   │   ├── exceptions.py       # Excepciones HTTP
+│   │   ├── middleware.py       # Security headers (OWASP)
+│   │   ├── limiter.py          # Rate limiting (SlowAPI)
+│   │   ├── logging.py          # Logging estructurado
+│   │   ├── metrics.py          # Métricas Prometheus
+│   │   └── sentry.py           # Error tracking
 │   ├── models/                 # Modelos SQLAlchemy
 │   │   ├── user.py             # Modelo de usuario
 │   │   ├── role.py             # Modelo de roles (RBAC)
@@ -152,7 +158,9 @@ recetario/
 │   ├── test_me.py              # Tests de perfil
 │   ├── test_roles.py           # Tests de RBAC
 │   ├── test_sessions.py        # Tests de sesiones
-│   └── test_rate_limit.py      # Tests de rate limit
+│   ├── test_rate_limit.py      # Tests de rate limit
+│   ├── test_security.py        # Tests de seguridad OWASP
+│   └── test_e2e_flows.py       # Tests E2E
 ├── docs/                       # Documentación
 ├── legacy/                     # Código original (referencia)
 ├── .env                        # Variables de entorno

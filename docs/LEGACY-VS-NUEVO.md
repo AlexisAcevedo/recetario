@@ -13,7 +13,7 @@
 | **Validación** | Básica | EmailStr, min/max length | ⭐⭐⭐⭐ |
 | **Errores** | HTTPException genéricas | Excepciones personalizadas | ⭐⭐⭐⭐ |
 | **Seguridad** | passlib | bcrypt directo + refresh tokens | ⭐⭐⭐⭐⭐ |
-| **Tests** | Ninguno | 47 tests automatizados (7 archivos) | ⭐⭐⭐⭐⭐ |
+| **Tests** | Ninguno | 84 tests automatizados (8 archivos) | ⭐⭐⭐⭐⭐ |
 | **Documentación** | README básico | Docs completa en español | ⭐⭐⭐⭐⭐ |
 | **Timestamps** | Sin tracking | created_at, updated_at | ⭐⭐⭐⭐ |
 | **Config** | Hardcoded | pydantic-settings | ⭐⭐⭐⭐⭐ |
@@ -61,7 +61,7 @@ recetario/
 │   ├── services/       # Lógica de negocio
 │   ├── api/v1/         # Capa HTTP
 │   └── main.py
-└── tests/              # Suite de tests (7 archivos)
+└── tests/              # Suite de tests (8 archivos)
 ```
 
 **¿Por qué es mejor?**
@@ -96,10 +96,10 @@ class Settings(BaseSettings):
     database_url: str
     secret_key: str
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    
-    class Config:
-        env_file = ".env"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
+    model_config = SettingsConfigDict(env_file=".env")
 ```
 
 **Mejoras**:
@@ -127,7 +127,7 @@ class UserSchema(BaseModel):
 
 ```python
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=12)
 
 class UserBase(BaseModel):
     email: EmailStr     # ✅ Valida formato email
@@ -274,9 +274,10 @@ tests/
 ├── test_roles.py        # Tests de gestión de roles
 ├── test_sessions.py     # Tests de sesiones y refresh tokens
 ├── test_rate_limit.py   # Tests de rate limiting
+├── test_security.py     # Tests de seguridad OWASP
 └── test_e2e_flows.py    # Tests de flujos end-to-end
 
-Total: 47 tests automatizados
+Total: 84 tests automatizados
 ```
 
 **Cobertura**:
@@ -397,8 +398,8 @@ FastAPICache.init(RedisBackend(redis))
 |---------|--------|-------|--------|
 | Archivos Python | 9 | 20+ | +122% (mejor organización) |
 | Líneas de código | ~300 | ~900 | +200% (más robusto) |
-| Tests | 0 | 47 | ∞ |
-| Archivos de test | 0 | 7 | ∞ |
+| Tests | 0 | 84 | ∞ |
+| Archivos de test | 0 | 8 | ∞ |
 | Validaciones | 0 | 8+ | ∞ |
 | Excepciones custom | 0 | 4 | ∞ |
 | Docs en español | 0 | 3 archivos | ∞ |

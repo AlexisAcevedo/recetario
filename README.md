@@ -31,12 +31,14 @@ uvicorn app.main:app --reload
 ## ✨ Funcionalidades
 
 ### Seguridad
-- ✅ **JWT Authentication** - Access + Refresh tokens
+- ✅ **JWT Authentication** - Access + Refresh tokens con revocación
 - ✅ **Validación fuerte de contraseñas** - Mayúsculas, minúsculas, números, símbolos, 12+ chars
-- ✅ **Blacklist de contraseñas comunes** - Top 100 passwords bloqueadas
-- ✅ **Rate Limiting** - 5 req/min en login, 100 req/min general
+- ✅ **Blacklist de contraseñas comunes** - Passwords comunes bloqueadas
+- ✅ **Rate Limiting** - 5 req/min en login, 10 req/hora en registro, 100 req/min general
 - ✅ **RBAC** - Sistema de roles y permisos
 - ✅ **Timing Attack Mitigation** - Respuestas de tiempo constante
+- ✅ **Security Headers** - CSP, HSTS, X-Frame-Options, X-Content-Type-Options (OWASP)
+- ✅ **CORS Endurecido** - Bloqueo de wildcards en producción
 
 ### Performance
 - ✅ **Caching** - Redis o fallback a memoria
@@ -56,14 +58,16 @@ uvicorn app.main:app --reload
 |--------|----------|-------------|------|
 | POST | `/auth/token` | Login (OAuth2) | ❌ |
 | POST | `/auth/refresh` | Renovar access token | ❌ |
+| POST | `/auth/logout` | Cerrar sesión | ✅ |
 | GET | `/users` | Listar usuarios (paginado) | ✅ |
 | POST | `/users` | Crear usuario | ❌ |
-| GET | `/users/{id}` | Obtener usuario | ❌ |
+| GET | `/users/{id}` | Obtener usuario | ✅ |
 | GET | `/me` | Mi perfil | ✅ |
 | PUT | `/me` | Actualizar perfil | ✅ |
 | DELETE | `/me` | Eliminar cuenta | ✅ |
 | GET | `/me/sessions` | Mis sesiones activas | ✅ |
 | DELETE | `/me/sessions/{id}` | Revocar sesión | ✅ |
+| DELETE | `/me/sessions` | Revocar todas las sesiones | ✅ |
 | GET | `/roles` | Listar roles | ✅ Admin |
 
 **Swagger UI**: http://127.0.0.1:8000/docs  
@@ -83,7 +87,7 @@ pytest tests/test_e2e_flows.py -v
 pytest tests/ --cov=app --cov-report=html
 ```
 
-**Cobertura actual**: 43 tests passing, 2 skipped
+**Cobertura actual**: 84 tests (8 archivos)
 
 ## 📁 Estructura
 
@@ -120,6 +124,7 @@ tests/
 ├── test_roles.py
 ├── test_sessions.py
 ├── test_rate_limit.py
+├── test_security.py    # Tests OWASP
 └── test_e2e_flows.py   # Tests E2E
 
 docs/
@@ -154,7 +159,7 @@ DATABASE_URL=postgresql://...
 
 # JWT
 SECRET_KEY=tu-secret-key-muy-seguro
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+ACCESS_TOKEN_EXPIRE_MINUTES=15
 REFRESH_TOKEN_EXPIRE_DAYS=7
 
 # CORS
@@ -167,4 +172,4 @@ ENVIRONMENT=development
 
 ## 📄 Licencia
 
-MIT © 2024
+MIT © 2025
