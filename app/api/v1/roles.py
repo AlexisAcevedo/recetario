@@ -5,7 +5,7 @@ Endpoints para gestión del sistema RBAC.
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from fastapi_cache.decorator import cache
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import get_db, require_role
 from app.schemas.role import RoleResponse, RoleCreate, RoleAssign
@@ -16,14 +16,13 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[RoleResponse])
-@cache(expire=60)
 async def list_roles(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(["admin"]))
 ) -> list[RoleResponse]:
     """
     Lista todos los roles disponibles (Async).
-    
+
     Requiere rol: admin
     """
     result = await db.execute(select(Role))
@@ -35,7 +34,7 @@ async def create_role(
     role_data: RoleCreate,
     db: AsyncSession = Depends(get_db),
     _: User = Depends(require_role(["admin"]))
-) -> Role:
+) -> RoleResponse:
     """
     Crea un nuevo rol (Async).
     
@@ -98,7 +97,14 @@ async def assign_role_to_user(
         )
     
     # Asignar
-    user.role_id = role.id
-    await db.commit()
-    
+    try:
+        user.role_id = role.id
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede asignar el rol"
+        )
+
     return {"message": f"Rol '{role.name}' asignado a usuario '{user.email}'"}

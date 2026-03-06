@@ -37,6 +37,11 @@ class User(Base):
     
     # Relación con Role
     role = relationship("Role", back_populates="users", lazy="selectin")
+
+    # Relación con Session - cascade delete para que al eliminar usuario se borren sus sesiones
+    sessions = relationship(
+        "Session", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+    )
     
     def has_permission(self, permission_name: str) -> bool:
         """Verifica si el usuario tiene un permiso específico."""

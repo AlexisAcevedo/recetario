@@ -1,7 +1,6 @@
 """
 Servicio de Usuario - Lógica de negocio asíncrona para operaciones de usuarios.
 """
-import asyncio
 from typing import Optional, List
 
 from sqlalchemy import select, func
@@ -9,10 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from app.models.user import User
-from app.models.role import Role
+from app.models.session import Session as SessionModel
 from app.schemas.user import UserCreate, UserUpdate
-from app.core.security import get_password_hash, verify_password
+from app.core.security import (
+    async_get_password_hash, async_verify_password,
+    get_password_hash, verify_password,
+)
 from app.core.exceptions import UserNotFoundException, UserAlreadyExistsException
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
@@ -41,28 +46,26 @@ async def count_users(db: AsyncSession) -> int:
 
 async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
     """Crea un nuevo usuario con mitigación de timing attacks (Async)."""
-    # Verificar si el email ya existe
+    # SIEMPRE hashear para timing consistency (bcrypt ~200ms, en thread pool)
+    hashed_password = await async_get_password_hash(user_data.password)
+
     existing_user = await get_user_by_email(db, user_data.email)
-    
     if existing_user:
-        # Hash dummy para timing consistency
-        get_password_hash("dummy_password_for_timing_attack_mitigation")
-        await asyncio.sleep(0.01) # Delay asíncrono no bloqueante
+        logger.warning("user_creation_duplicate_email", email=user_data.email)
         raise UserAlreadyExistsException()
-    
-    hashed_password = get_password_hash(user_data.password)
-    
+
     user = User(
         email=user_data.email,
         password=hashed_password,
         name=user_data.name,
         lastname=user_data.lastname
     )
-    
+
     try:
         db.add(user)
         await db.commit()
         await db.refresh(user)
+        logger.info("user_created", user_id=user.id, email=user.email)
         return user
     except IntegrityError:
         await db.rollback()
@@ -74,17 +77,18 @@ async def update_user(db: AsyncSession, user_id: int, user_data: UserUpdate) -> 
     user = await get_user_by_id(db, user_id)
     if not user:
         raise UserNotFoundException()
-    
+
     update_data = user_data.model_dump(exclude_unset=True)
-    
+
     if "password" in update_data:
-        update_data["password"] = get_password_hash(update_data["password"])
-    
+        update_data["password"] = await async_get_password_hash(update_data["password"])
+
     for field, value in update_data.items():
         setattr(user, field, value)
-    
+
     await db.commit()
     await db.refresh(user)
+    logger.info("user_updated", user_id=user_id)
     return user
 
 
@@ -93,17 +97,35 @@ async def delete_user(db: AsyncSession, user_id: int) -> bool:
     user = await get_user_by_id(db, user_id)
     if not user:
         raise UserNotFoundException()
-    
+
     await db.delete(user)
     await db.commit()
+    logger.info("user_deleted", user_id=user_id)
     return True
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> Optional[User]:
-    """Autentica un usuario (Async)."""
+    """Autentica un usuario (Async). Usa thread pool para bcrypt."""
     user = await get_user_by_email(db, email)
     if not user:
+        # Timing attack mitigation: hash+verify dummy en thread pool
+        dummy_hash = await async_get_password_hash("dummy_password")
+        await async_verify_password("dummy_password", dummy_hash)
+        logger.warning("auth_failed_user_not_found", email=email)
         return None
-    if not verify_password(password, user.password):
+    if not await async_verify_password(password, user.password):
+        logger.warning("auth_failed_wrong_password", user_id=user.id)
         return None
+    logger.info("auth_success", user_id=user.id)
     return user
+
+
+async def get_user_sessions(
+    db: AsyncSession, user_id: int, active_only: bool = True
+) -> List[SessionModel]:
+    """Obtiene las sesiones de un usuario."""
+    query = select(SessionModel).filter(SessionModel.user_id == user_id)
+    if active_only:
+        query = query.filter(SessionModel.is_revoked == False)
+    result = await db.execute(query)
+    return result.scalars().all()

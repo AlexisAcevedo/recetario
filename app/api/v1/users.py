@@ -1,9 +1,7 @@
 """
 Router de Usuarios asíncrono.
 """
-from typing import List
-
-from fastapi import APIRouter, Depends, status, Request
+from fastapi import APIRouter, Depends, status, Request, Query, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user
@@ -20,8 +18,8 @@ router = APIRouter()
 @limiter.limit("100/minute")
 async def get_users(
     request: Request,
-    page: int = 1,
-    per_page: int = 100,
+    page: int = Query(1, ge=1, description="Número de página"),
+    per_page: int = Query(100, ge=1, le=1000, description="Elementos por página"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> PaginatedResponse[UserResponse]:
@@ -29,9 +27,9 @@ async def get_users(
     skip = (page - 1) * per_page
     users = await user_service.get_users(db, skip=skip, limit=per_page)
     total = await user_service.count_users(db)
-    
+
     total_pages = (total + per_page - 1) // per_page
-    
+
     return PaginatedResponse(
         items=users,
         total=total,
@@ -45,15 +43,16 @@ async def get_users(
 @limiter.limit("100/minute")
 async def get_user(
     request: Request,
-    user_id: int,
-    db: AsyncSession = Depends(get_db)
+    user_id: int = Path(..., gt=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> UserResponse:
-    """Obtiene un usuario por su ID (Async)."""
+    """Obtiene un usuario por su ID (Async). Requiere autenticación."""
     user = await user_service.get_user_by_id(db, user_id)
     if not user:
         from app.core.exceptions import UserNotFoundException
         raise UserNotFoundException()
-    return user
+    return UserResponse.from_user(user)
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

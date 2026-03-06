@@ -44,7 +44,7 @@ class TestRefreshTokenFlow:
             data={"username": "test@example.com", "password": "TestPass123!@#"}
         )
         refresh_token = login_res.json()["refresh_token"]
-        
+
         # 2. Refresh
         refresh_res = await client.post(
             "/api/v1/auth/refresh",
@@ -62,18 +62,57 @@ class TestRefreshTokenFlow:
 
 
 @pytest.mark.asyncio
+class TestFullUserLifecycle:
+    """Flujo completo: registro -> login -> uso -> logout."""
+
+    async def test_register_login_use_logout(self, client: AsyncClient):
+        # 1. Registro
+        reg_res = await client.post("/api/v1/users", json={
+            "email": "lifecycle@example.com",
+            "password": "LifeCycle123!@#",
+            "name": "Life", "lastname": "Cycle"
+        })
+        assert reg_res.status_code == 201
+
+        # 2. Login
+        login_res = await client.post(
+            "/api/v1/auth/token",
+            data={"username": "lifecycle@example.com", "password": "LifeCycle123!@#"}
+        )
+        assert login_res.status_code == 200
+        tokens = login_res.json()
+        headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+        # 3. Usar API
+        me_res = await client.get("/api/v1/me", headers=headers)
+        assert me_res.status_code == 200
+        assert me_res.json()["email"] == "lifecycle@example.com"
+
+        # 4. Logout
+        logout_res = await client.post("/api/v1/auth/logout", headers=headers)
+        assert logout_res.status_code == 204
+
+        # 5. Refresh falla después de logout
+        refresh_res = await client.post(
+            "/api/v1/auth/refresh",
+            json={"refresh_token": tokens["refresh_token"]}
+        )
+        assert refresh_res.status_code == 401
+
+
+@pytest.mark.asyncio
 class TestPasswordValidation:
     """Validación de complejidad de contraseñas (Async)."""
 
     async def test_weak_password_rejected(self, client: AsyncClient):
         user_data = {
             "email": "weak@example.com",
-            "password": "123", # Muy corta
+            "password": "123",
             "name": "Weak",
             "lastname": "Pass"
         }
         response = await client.post("/api/v1/users", json=user_data)
-        assert response.status_code == 422 # Pydantic validation error
+        assert response.status_code == 422
 
     async def test_strong_password_accepted(self, client: AsyncClient):
         user_data = {

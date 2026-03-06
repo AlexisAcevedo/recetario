@@ -8,9 +8,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.v1.router import router as api_v1_router
+from app.api.deps import get_db
 from app.core.limiter import limiter
 
 from app.core.middleware import SecurityHeadersMiddleware
@@ -43,21 +47,29 @@ async def lifespan(app: FastAPI):
     from fastapi_cache.backends.inmemory import InMemoryBackend
     from redis import asyncio as aioredis
     
+    from app.core.logging import get_logger
+    logger = get_logger("app.lifespan")
+
     try:
-        # Intenta conectar a Redis en localhost (default)
-        redis = aioredis.from_url("redis://localhost", encoding="utf8", decode_responses=True)
-        # Check connection
+        redis = aioredis.from_url(
+            settings.redis_url, encoding="utf8", decode_responses=True
+        )
         await redis.ping()
         FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
-        # logger.info("Redis cache initialized")
+        logger.info("cache_initialized", backend="redis")
     except Exception as e:
-        # Fallback a memoria si falla Redis
-        # logger.warning(f"Redis connection failed, using InMemory cache: {e}")
+        logger.warning("cache_fallback_inmemory", error=str(e))
         FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
     
     yield
-    # Cierre: Limpieza si es necesaria
-    pass
+
+    # Cierre: limpiar conexión Redis
+    try:
+        if 'redis' in dir():
+            await redis.close()
+            logger.info("redis_connection_closed")
+    except Exception:
+        pass
 
 
 # Crear aplicación FastAPI
@@ -105,12 +117,18 @@ async def root():
 
 
 @app.get("/health", tags=["health"])
-async def health_check():
-    """Verificación de estado detallada."""
-    return {
-        "status": "healthy",
-        "database": "connected"
-    }
+async def health_check(db: AsyncSession = Depends(get_db)):
+    """Verificación de estado detallada con check real de BD."""
+    from sqlalchemy import text
+
+    db_status = "connected"
+    try:
+        await db.execute(text("SELECT 1"))
+    except Exception:
+        db_status = "disconnected"
+
+    status_val = "healthy" if db_status == "connected" else "unhealthy"
+    return {"status": status_val, "database": db_status}
 
 
 @app.get("/metrics", tags=["monitoring"], include_in_schema=False)

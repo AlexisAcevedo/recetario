@@ -9,6 +9,7 @@ from typing import AsyncGenerator, Dict
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.pool import StaticPool
+from sqlalchemy import event
 
 from app.main import app
 from app.core.database import Base
@@ -32,6 +33,14 @@ engine = create_async_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+
+@event.listens_for(engine.sync_engine, "connect")
+def _enable_sqlite_fk(dbapi_connection, connection_record):
+    """Habilita foreign keys en SQLite para que CASCADE funcione."""
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 TestingSessionLocal = async_sessionmaker(
     autocommit=False, 
     autoflush=False, 

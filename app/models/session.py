@@ -49,7 +49,7 @@ class Session(Base):
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relación con User
-    user = relationship("User", backref="sessions")
+    user = relationship("User", back_populates="sessions")
     
     def is_valid(self) -> bool:
         """Verifica si la sesión es válida (no expirada ni revocada)."""

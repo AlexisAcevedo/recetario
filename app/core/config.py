@@ -6,7 +6,7 @@ from functools import lru_cache
 from typing import Optional
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -50,6 +50,9 @@ class Settings(BaseSettings):
         description="Orígenes CORS permitidos, separados por coma"
     )
     
+    # Cache / Redis
+    redis_url: str = Field(default="redis://localhost", description="URL de conexión a Redis")
+
     # Observabilidad
     sentry_dsn: str | None = Field(default=None, description="Sentry DSN para error tracking")
     environment: str = Field(default="development", description="Entorno de ejecución")
@@ -61,9 +64,7 @@ class Settings(BaseSettings):
             raise ValueError("OWASP A01: CORS wildcard '*' is strictly forbidden in production")
         return origins
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 
 @lru_cache()
